@@ -11,12 +11,17 @@ from app.db.pool import create_pool
 from app.db.schema import embedding_column_dim, init_schema, pgvector_version
 from app.embeddings.base import EmbeddingProvider
 from app.embeddings.factory import get_embedding_provider
+from app.rag.factory import get_generator
+from app.rag.generator import AnswerGenerator
+from app.rag.service import RagService
 from app.retrieval.service import RetrievalService
 from app.retrieval.store import supports_iterative_scan
 
 
 def create_app(
-    settings: Settings | None = None, embedder: EmbeddingProvider | None = None
+    settings: Settings | None = None,
+    embedder: EmbeddingProvider | None = None,
+    generator: AnswerGenerator | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
 
@@ -49,6 +54,12 @@ def create_app(
             provider,
             ef_search=settings.hnsw_ef_search,
             iterative_scan=supports_iterative_scan(version),
+        )
+        app.state.rag = RagService(
+            app.state.retrieval,
+            generator or get_generator(settings),
+            settings.evidence_min_similarity,
+            settings.rag_max_context_chunks,
         )
         try:
             yield

@@ -94,6 +94,27 @@ jobs:
           assert {d['embedding_dim'] for d in docs} == {384}
           print(len(docs), 'documents ingested')
           "
+      - name: Smoke-test search and ask through the API
+        run: |
+          curl -sf -X POST http://localhost:8000/api/search             -H 'content-type: application/json'             -d '{"query": "late payment fee", "top_k": 3, "filters": {"category": "fees"}}'             | python -c "
+          import json, sys
+          body = json.load(sys.stdin)
+          assert body['results'] and {h['category'] for h in body['results']} == {'fees'}
+          print('search ok:', body['results'][0]['section'])
+          "
+          curl -sf -X POST http://localhost:8000/api/ask             -H 'content-type: application/json'             -d '{"question": "What is the late payment fee?"}'             | python -c "
+          import json, sys
+          body = json.load(sys.stdin)
+          assert body['status'] == 'answered' and body['sources'], body
+          assert '\$35' in body['answer'], body['answer']
+          print('ask answered with', len(body['sources']), 'source(s)')
+          "
+          curl -sf -X POST http://localhost:8000/api/ask             -H 'content-type: application/json'             -d '{"question": "How do I bake sourdough bread?"}'             | python -c "
+          import json, sys
+          body = json.load(sys.stdin)
+          assert body['status'] == 'refused' and not body['sources'], body
+          print('ask refused out-of-scope question')
+          "
       - name: Show service state
         if: always()
         run: docker compose ps
