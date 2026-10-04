@@ -3,7 +3,8 @@
 from fastapi import APIRouter, Request, Response
 
 from app.db.schema import embedding_column_dim, pgvector_version
-from app.models.schemas import HealthResponse
+from app.ingestion.catalog import list_documents
+from app.models.schemas import DocumentInfo, HealthResponse
 
 router = APIRouter()
 
@@ -28,3 +29,9 @@ def health(request: Request, response: Response) -> HealthResponse:
             detail="pgvector extension or chunks table is missing",
         )
     return HealthResponse(status="ok", pgvector_version=version, embedding_dim=dim)
+
+
+@router.get("/api/documents", response_model=list[DocumentInfo])
+def documents(request: Request) -> list[DocumentInfo]:
+    """The documents that have been ingested, with their chunk counts."""
+    return [DocumentInfo(**row) for row in list_documents(request.app.state.pool)]
