@@ -37,3 +37,21 @@ class IngestResult:
     version: str
     action: Literal["created", "updated", "skipped"]
     chunks: int
+
+
+@dataclass(frozen=True)
+class RetrievedChunk:
+    """A stored chunk returned by vector search, with its distance from the query."""
+
+    chunk_id: int
+    document_id: int
+    document: str
+    title: str
+    version: str
+    category: str
+    status: str
+    section: str
+    text: str
+    distance: float  # cosine distance, 0 (identical direction) to 2 (opposite)
+    similarity: float  # 1 - distance, i.e. the cosine similarity
+    metadata: dict[str, str] = field(default_factory=dict)

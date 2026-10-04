@@ -8,10 +8,16 @@ from fastapi import FastAPI
 from app.api.routes import router
 from app.core.config import Settings, get_settings
 from app.db.pool import create_pool
-from app.db.schema import embedding_column_dim, init_schema
+from app.db.schema import embedding_column_dim, init_schema, pgvector_version
+from app.embeddings.base import EmbeddingProvider
+from app.embeddings.factory import get_embedding_provider
+from app.retrieval.service import RetrievalService
+from app.retrieval.store import supports_iterative_scan
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, embedder: EmbeddingProvider | None = None
+) -> FastAPI:
     settings = settings or get_settings()
 
     @asynccontextmanager
@@ -28,14 +34,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         with pool.connection() as conn:
             actual = embedding_column_dim(conn)
+            version = pgvector_version(conn)
         if actual != settings.embedding_dim:
             pool.close()
             raise RuntimeError(
                 f"chunks.embedding has {actual} dimensions but EMBEDDING_DIM is "
                 f"{settings.embedding_dim}; use the matching model or recreate the table"
             )
+        provider = embedder or get_embedding_provider(settings)
         app.state.pool = pool
         app.state.settings = settings
+        app.state.retrieval = RetrievalService(
+            pool,
+            provider,
+            ef_search=settings.hnsw_ef_search,
+            iterative_scan=supports_iterative_scan(version),
+        )
         try:
             yield
         finally:
