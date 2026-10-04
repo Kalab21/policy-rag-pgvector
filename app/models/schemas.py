@@ -68,6 +68,56 @@ class SearchHit(BaseModel):
     metadata: dict[str, str]
 
 
+class AskRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(min_length=1, max_length=1000, examples=["What is the late payment fee?"])
+    top_k: int = Field(default=5, ge=1, le=20)
+    filters: SearchFilters | None = None
+
+    @field_validator("question")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("question must not be blank")
+        return value
+
+
+class EvidenceInfo(BaseModel):
+    status: Literal["sufficient", "insufficient"]
+    reason: str
+    best_similarity: float | None
+    threshold: float
+    chunks_considered: int
+    chunks_used: int
+
+
+class Citation(BaseModel):
+    citation: int
+    chunk_id: int
+    document: str
+    title: str
+    version: str
+    category: str
+    status: str
+    section: str
+    similarity: float
+    text: str
+
+
+class AskResponse(BaseModel):
+    question: str
+    answer: str
+    status: Literal["answered", "refused"]
+    refusal_reason: str | None
+    evidence: EvidenceInfo
+    sources: list[Citation]
+    retrieved_chunk_ids: list[int]
+    generator: str
+    embedding_model: str
+
+
 class SearchResponse(BaseModel):
     query: str
     top_k: int

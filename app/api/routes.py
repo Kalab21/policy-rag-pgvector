@@ -1,11 +1,16 @@
 """HTTP routes."""
 
-from fastapi import APIRouter, Request, Response
+import httpx
+from fastapi import APIRouter, HTTPException, Request, Response
 
 from app.db.schema import embedding_column_dim, pgvector_version
 from app.ingestion.catalog import list_documents
 from app.models.schemas import (
+    AskRequest,
+    AskResponse,
+    Citation,
     DocumentInfo,
+    EvidenceInfo,
     HealthResponse,
     SearchHit,
     SearchRequest,
@@ -71,4 +76,41 @@ def search(body: SearchRequest, request: Request) -> SearchResponse:
             )
             for h in hits
         ],
+    )
+
+
+@router.post("/api/ask", response_model=AskResponse)
+def ask(body: AskRequest, request: Request) -> AskResponse:
+    """Answer from the policy documents, with citations, or refuse when the retrieved
+    evidence is not strong enough. Answers come from current policy unless `filters.status`
+    says otherwise."""
+    filters = body.filters.as_dict() if body.filters else {}
+    try:
+        result = request.app.state.rag.ask(body.question, body.top_k, filters)
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="answer generator unavailable") from exc
+    return AskResponse(
+        question=result.question,
+        answer=result.answer,
+        status=result.status,
+        refusal_reason=result.refusal_reason,
+        evidence=EvidenceInfo(**vars(result.evidence)),
+        sources=[
+            Citation(
+                citation=number,
+                chunk_id=c.chunk_id,
+                document=c.document,
+                title=c.title,
+                version=c.version,
+                category=c.category,
+                status=c.status,
+                section=c.section,
+                similarity=c.similarity,
+                text=c.text,
+            )
+            for number, c in result.sources
+        ],
+        retrieved_chunk_ids=result.retrieved_chunk_ids,
+        generator=result.generator,
+        embedding_model=result.embedding_model,
     )
