@@ -59,8 +59,9 @@ def search_chunks(
         raise ValueError("top_k must be at least 1")
     clean = validate_filters(filters)
     where = "WHERE metadata @> %(filter)s" if clean else ""
+    # `where` is one of two fixed strings; every value is a bound parameter.
     sql = (
-        "SELECT id, document_id, source, section, chunk_text, metadata,"
+        "SELECT id, document_id, source, section, chunk_text, metadata,"  # nosec B608
         " embedding <=> %(query)s AS distance"
         f" FROM chunks {where}"
         " ORDER BY embedding <=> %(query)s LIMIT %(k)s"

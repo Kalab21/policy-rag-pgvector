@@ -39,3 +39,7 @@ markers = [
     "integration: needs PostgreSQL with pgvector (TEST_DATABASE_URL)",
     "model: loads the real embedding model (downloads it on first use)",
 ]
+
+[tool.bandit]
+# B101: asserts are used to narrow types for mypy, not for security checks.
+skips = ["B101"]

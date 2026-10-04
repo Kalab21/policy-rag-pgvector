@@ -20,6 +20,7 @@ RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='${
 COPY app ./app
 COPY scripts ./scripts
 COPY sample_data ./sample_data
+COPY eval ./eval
 
 USER app
 EXPOSE 8000

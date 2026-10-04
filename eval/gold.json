@@ -1,0 +1,545 @@
+{
+  "description": "Gold questions for the synthetic policy corpus. 'relevant' names the chunk(s) (document, version, section) that contain the answer.",
+  "answerable": [
+    {
+      "id": "a01",
+      "question": "How much is the origination fee?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Origination fee"
+        }
+      ],
+      "answer_contains": [
+        "3.0 percent"
+      ]
+    },
+    {
+      "id": "a02",
+      "question": "What do you charge if I pay my installment late?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Late payment fee"
+        }
+      ],
+      "answer_contains": [
+        "$35"
+      ]
+    },
+    {
+      "id": "a03",
+      "question": "How many days after the due date before a payment counts as late?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Late payment fee"
+        }
+      ],
+      "answer_contains": [
+        "10 days"
+      ]
+    },
+    {
+      "id": "a04",
+      "question": "What happens if my payment bounces?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Returned payment fee"
+        }
+      ],
+      "answer_contains": [
+        "$25"
+      ]
+    },
+    {
+      "id": "a05",
+      "question": "Do paper statements cost extra?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Paper statement fee"
+        }
+      ],
+      "answer_contains": [
+        "$3"
+      ]
+    },
+    {
+      "id": "a06",
+      "question": "Can I pay my loan off early without a penalty?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Prepayment"
+        }
+      ],
+      "answer_contains": [
+        "no prepayment penalty"
+      ]
+    },
+    {
+      "id": "a07",
+      "question": "How often can a fee be waived for a customer?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Fee waivers"
+        }
+      ],
+      "answer_contains": [
+        "one fee waiver"
+      ]
+    },
+    {
+      "id": "a08",
+      "question": "Who has to approve a waiver over $100?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Fee waivers"
+        }
+      ],
+      "answer_contains": [
+        "servicing manager"
+      ]
+    },
+    {
+      "id": "a09",
+      "question": "How long are loan application records kept?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Retention periods"
+        }
+      ],
+      "answer_contains": [
+        "7 years"
+      ]
+    },
+    {
+      "id": "a10",
+      "question": "How long do you keep recordings of phone calls?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Retention periods"
+        }
+      ],
+      "answer_contains": [
+        "2 years"
+      ]
+    },
+    {
+      "id": "a11",
+      "question": "How quickly must you respond to a request for my personal data?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Data subject requests"
+        }
+      ],
+      "answer_contains": [
+        "30 days"
+      ]
+    },
+    {
+      "id": "a12",
+      "question": "How soon are customers told about a data breach?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Incident notification"
+        }
+      ],
+      "answer_contains": [
+        "72 hours"
+      ]
+    },
+    {
+      "id": "a13",
+      "question": "How often are encryption keys rotated?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Encryption"
+        }
+      ],
+      "answer_contains": [
+        "every year"
+      ]
+    },
+    {
+      "id": "a14",
+      "question": "Who can see Social Security numbers?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Access to personal data"
+        }
+      ],
+      "answer_contains": [
+        "additional approval"
+      ]
+    },
+    {
+      "id": "a15",
+      "question": "How fast must a complaint be acknowledged?",
+      "relevant": [
+        {
+          "document": "complaint-handling",
+          "version": "2.2",
+          "section": "Acknowledgement and resolution times"
+        }
+      ],
+      "answer_contains": [
+        "2 business days"
+      ]
+    },
+    {
+      "id": "a16",
+      "question": "What is the longest a complaint can take to resolve?",
+      "relevant": [
+        {
+          "document": "complaint-handling",
+          "version": "2.2",
+          "section": "Acknowledgement and resolution times"
+        }
+      ],
+      "answer_contains": [
+        "35 business days"
+      ]
+    },
+    {
+      "id": "a17",
+      "question": "Who reviews escalated complaints?",
+      "relevant": [
+        {
+          "document": "complaint-handling",
+          "version": "2.2",
+          "section": "Escalation"
+        }
+      ],
+      "answer_contains": [
+        "compliance officer"
+      ]
+    },
+    {
+      "id": "a18",
+      "question": "What time of day can collectors phone borrowers?",
+      "relevant": [
+        {
+          "document": "collections-and-hardship",
+          "version": "1.1",
+          "section": "Contact rules"
+        }
+      ],
+      "answer_contains": [
+        "8 a.m."
+      ]
+    },
+    {
+      "id": "a19",
+      "question": "How many payments can be deferred under a hardship plan?",
+      "relevant": [
+        {
+          "document": "collections-and-hardship",
+          "version": "1.1",
+          "section": "Payment deferral"
+        }
+      ],
+      "answer_contains": [
+        "2 monthly payments"
+      ]
+    },
+    {
+      "id": "a20",
+      "question": "How long until a hardship decision is made?",
+      "relevant": [
+        {
+          "document": "collections-and-hardship",
+          "version": "1.1",
+          "section": "Hardship assistance"
+        }
+      ],
+      "answer_contains": [
+        "5 business days"
+      ]
+    },
+    {
+      "id": "a21",
+      "question": "At how many days past due is a loan charged off?",
+      "relevant": [
+        {
+          "document": "collections-and-hardship",
+          "version": "1.1",
+          "section": "Delinquency milestones"
+        }
+      ],
+      "answer_contains": [
+        "120 days"
+      ]
+    },
+    {
+      "id": "a22",
+      "question": "Which documents prove my address?",
+      "relevant": [
+        {
+          "document": "identity-verification",
+          "version": "1.0",
+          "section": "Accepted identification"
+        }
+      ],
+      "answer_contains": [
+        "60 days"
+      ]
+    },
+    {
+      "id": "a23",
+      "question": "What happens if my identity details do not match the records?",
+      "relevant": [
+        {
+          "document": "identity-verification",
+          "version": "1.0",
+          "section": "Verification outcomes"
+        }
+      ],
+      "answer_contains": [
+        "manual review"
+      ]
+    },
+    {
+      "id": "a24",
+      "question": "Is a passport accepted as identification?",
+      "relevant": [
+        {
+          "document": "identity-verification",
+          "version": "1.0",
+          "section": "Accepted identification"
+        }
+      ],
+      "answer_contains": [
+        "passport"
+      ]
+    },
+    {
+      "id": "a25",
+      "question": "What credit score qualifies for automatic approval?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Credit score decision bands"
+        }
+      ],
+      "answer_contains": [
+        "640"
+      ]
+    },
+    {
+      "id": "a26",
+      "question": "What is the maximum personal loan amount?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Loan amounts and terms"
+        }
+      ],
+      "answer_contains": [
+        "$50,000"
+      ]
+    },
+    {
+      "id": "a27",
+      "question": "What is the highest debt-to-income ratio allowed?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Debt-to-income limit"
+        }
+      ],
+      "answer_contains": [
+        "43 percent"
+      ]
+    },
+    {
+      "id": "a28",
+      "question": "How soon does an underwriter review a referred application?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Manual review"
+        }
+      ],
+      "answer_contains": [
+        "three business days"
+      ]
+    },
+    {
+      "id": "a29",
+      "question": "What proof of income do self-employed applicants provide?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Employment and income verification"
+        }
+      ],
+      "answer_contains": [
+        "tax returns"
+      ]
+    },
+    {
+      "id": "a30",
+      "question": "When there is a co-borrower, whose credit score decides the band?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Co-borrowers"
+        }
+      ],
+      "answer_contains": [
+        "lower credit score"
+      ]
+    },
+    {
+      "id": "a31",
+      "question": "What credit score was needed for automatic approval?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "1.0",
+          "section": "Credit score decision bands"
+        }
+      ],
+      "answer_contains": [
+        "660"
+      ],
+      "filters": {
+        "status": "superseded"
+      }
+    },
+    {
+      "id": "a32",
+      "question": "What was the old maximum loan amount?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "1.0",
+          "section": "Loan amounts and terms"
+        }
+      ],
+      "answer_contains": [
+        "$35,000"
+      ],
+      "filters": {
+        "status": "superseded"
+      }
+    },
+    {
+      "id": "a33",
+      "question": "What was the debt-to-income limit in version 1.0?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "1.0",
+          "section": "Debt-to-income limit"
+        }
+      ],
+      "answer_contains": [
+        "40 percent"
+      ],
+      "filters": {
+        "document": "underwriting-policy",
+        "version": "1.0",
+        "status": "superseded"
+      }
+    }
+  ],
+  "unanswerable": [
+    {
+      "id": "u01",
+      "question": "How do I bake sourdough bread?",
+      "kind": "out_of_domain"
+    },
+    {
+      "id": "u02",
+      "question": "Who won the 2022 World Cup?",
+      "kind": "out_of_domain"
+    },
+    {
+      "id": "u03",
+      "question": "What is the weather in Paris today?",
+      "kind": "out_of_domain"
+    },
+    {
+      "id": "u04",
+      "question": "Explain how quantum computing works.",
+      "kind": "out_of_domain"
+    },
+    {
+      "id": "u05",
+      "question": "What is the CEO's favorite color?",
+      "kind": "out_of_domain"
+    },
+    {
+      "id": "u06",
+      "question": "What is the policy on cryptocurrency loans?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "u07",
+      "question": "What is the current mortgage interest rate?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "u08",
+      "question": "Does the bank offer student loans?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "u09",
+      "question": "How many vacation days do employees get?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "u10",
+      "question": "What is the refund policy for gift cards?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "u11",
+      "question": "What APR does a personal loan carry?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "u12",
+      "question": "How many branches does the bank operate?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "u13",
+      "question": "What is the customer support phone number?",
+      "kind": "near_domain"
+    }
+  ]
+}

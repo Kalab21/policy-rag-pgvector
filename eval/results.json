@@ -1,0 +1,111 @@
+{
+  "retrieval_all_versions": {
+    "questions": 33,
+    "hit_at_k": {
+      "1": 0.8787878787878788,
+      "3": 0.9393939393939394,
+      "5": 1.0
+    },
+    "recall_at_k": {
+      "1": 0.8787878787878788,
+      "3": 0.9393939393939394,
+      "5": 1.0
+    },
+    "mrr": 0.9242424242424242,
+    "missed_at_max_k": []
+  },
+  "retrieval_current_policy": {
+    "questions": 33,
+    "hit_at_k": {
+      "1": 0.9090909090909091,
+      "3": 0.9393939393939394,
+      "5": 1.0
+    },
+    "recall_at_k": {
+      "1": 0.9090909090909091,
+      "3": 0.9393939393939394,
+      "5": 1.0
+    },
+    "mrr": 0.9393939393939394,
+    "missed_at_max_k": []
+  },
+  "evidence_gate": [
+    {
+      "threshold": 0.4,
+      "answerable_pass_rate": 1.0,
+      "unanswerable_refused_rate": 0.6923076923076923
+    },
+    {
+      "threshold": 0.45,
+      "answerable_pass_rate": 0.9696969696969697,
+      "unanswerable_refused_rate": 0.8461538461538461
+    },
+    {
+      "threshold": 0.5,
+      "answerable_pass_rate": 0.8787878787878788,
+      "unanswerable_refused_rate": 0.8461538461538461
+    },
+    {
+      "threshold": 0.55,
+      "answerable_pass_rate": 0.8181818181818182,
+      "unanswerable_refused_rate": 0.9230769230769231
+    },
+    {
+      "threshold": 0.6,
+      "answerable_pass_rate": 0.6666666666666666,
+      "unanswerable_refused_rate": 1.0
+    },
+    {
+      "threshold": 0.65,
+      "answerable_pass_rate": 0.5454545454545454,
+      "unanswerable_refused_rate": 1.0
+    },
+    {
+      "similarity_range": {
+        "answerable_min": 0.43041563034057617,
+        "unanswerable_max": 0.5816282976644227
+      }
+    }
+  ],
+  "ask": {
+    "answerable": {
+      "questions": 33,
+      "answered_correctly": 23,
+      "answered_incorrectly": 4,
+      "wrongly_refused": 6,
+      "correct_rate": 0.696969696969697,
+      "problems": [
+        "a04: wrongly refused (insufficient_evidence)",
+        "a06: answered, contains expected facts=False, cites a relevant chunk=True",
+        "a08: wrongly refused (insufficient_evidence)",
+        "a13: wrongly refused (insufficient_evidence)",
+        "a14: wrongly refused (insufficient_evidence)",
+        "a16: answered, contains expected facts=False, cites a relevant chunk=True",
+        "a20: wrongly refused (insufficient_evidence)",
+        "a21: answered, contains expected facts=False, cites a relevant chunk=False",
+        "a22: wrongly refused (insufficient_evidence)",
+        "a23: answered, contains expected facts=True, cites a relevant chunk=False"
+      ]
+    },
+    "unanswerable": {
+      "questions": 13,
+      "refused": 12,
+      "answered_anyway": 1,
+      "refusal_rate": 0.9230769230769231,
+      "problems": [
+        "u11 (near_domain): answered: What APR does a personal loan carry?"
+      ]
+    }
+  },
+  "setup": {
+    "documents": 7,
+    "chunks": 34,
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "embedding_dim": 384,
+    "pgvector_version": "0.8.7",
+    "chunk_size": 700,
+    "chunk_overlap": 120,
+    "evidence_min_similarity": 0.55,
+    "generator": "extractive"
+  }
+}
