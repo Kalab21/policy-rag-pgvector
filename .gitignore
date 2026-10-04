@@ -19,3 +19,7 @@ htmlcov/
 .idea/
 .vscode/
 .DS_Store
+
+# Local-only variants used on machines that intercept TLS (never committed)
+Dockerfile.local
+docker-compose.local.yml

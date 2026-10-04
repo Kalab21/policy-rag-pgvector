@@ -1,0 +1,33 @@
+# Local stack: PostgreSQL with the pgvector extension, and the API.
+# Credentials default to the local-only values in .env.example.
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-policy_rag}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-policy_rag_local_only}
+      POSTGRES_DB: ${POSTGRES_DB:-policy_rag}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-policy_rag}:${POSTGRES_PASSWORD:-policy_rag_local_only}@db:5432/${POSTGRES_DB:-policy_rag}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-384}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
