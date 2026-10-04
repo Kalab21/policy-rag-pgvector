@@ -12,8 +12,14 @@ RUN useradd --create-home --uid 10001 app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
+# Download the embedding model at build time so the container starts without network access.
+ARG EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+ENV FASTEMBED_CACHE_DIR=/opt/models
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='${EMBEDDING_MODEL}', cache_dir='/opt/models')"     && chmod -R a+rX /opt/models
+
 COPY app ./app
 COPY scripts ./scripts
+COPY sample_data ./sample_data
 
 USER app
 EXPOSE 8000
