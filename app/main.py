@@ -57,7 +57,7 @@ def create_app(
         )
         app.state.rag = RagService(
             app.state.retrieval,
-            generator or get_generator(settings),
+            generator or get_generator(settings, provider),
             settings.evidence_min_similarity,
             settings.rag_max_context_chunks,
         )

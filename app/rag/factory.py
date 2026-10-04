@@ -1,6 +1,7 @@
 """Build the configured answer generator."""
 
 from app.core.config import Settings
+from app.embeddings.base import EmbeddingProvider
 from app.rag.generator import AnswerGenerator, ExtractiveGenerator, OpenAICompatibleGenerator
 
 
@@ -8,9 +9,9 @@ class UnknownGeneratorError(ValueError):
     pass
 
 
-def get_generator(settings: Settings) -> AnswerGenerator:
+def get_generator(settings: Settings, embedder: EmbeddingProvider | None = None) -> AnswerGenerator:
     if settings.llm_provider == "extractive":
-        return ExtractiveGenerator()
+        return ExtractiveGenerator(embedder)
     if settings.llm_provider == "openai_compatible":
         if not settings.llm_base_url or not settings.llm_model:
             raise UnknownGeneratorError(

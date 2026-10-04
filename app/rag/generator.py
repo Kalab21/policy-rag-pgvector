@@ -1,8 +1,9 @@
 """Answer generation. The generator only ever sees chunks that passed the evidence gate.
 
 Two implementations:
-- ExtractiveGenerator (default): no model and no network. It selects the sentences of the
-  retrieved chunks that best match the question and quotes them with [n] markers.
+- ExtractiveGenerator (default): no LLM and no network. It quotes the sentences of the
+  retrieved chunks that best match the question, with [n] markers. Sentences are ranked by
+  embedding similarity to the question when an embedder is given, else by word overlap.
 - OpenAICompatibleGenerator: calls a chat-completions endpoint (OpenAI, Ollama, vLLM, ...)
   that the operator configures. It is not used unless LLM_PROVIDER says so.
 """
@@ -12,6 +13,7 @@ from typing import Protocol
 
 import httpx
 
+from app.embeddings.base import EmbeddingProvider
 from app.models.domain import RetrievedChunk
 
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])")
@@ -99,10 +101,41 @@ def _sentences(text: str) -> list[str]:
 class ExtractiveGenerator:
     name = "extractive"
 
-    def __init__(self, max_sentences: int = 3) -> None:
+    def __init__(
+        self,
+        embedder: EmbeddingProvider | None = None,
+        max_sentences: int = 2,
+        margin: float = 0.10,
+    ) -> None:
+        self._embedder = embedder
         self._max = max_sentences
+        self._margin = margin  # a further sentence must score within this of the best
 
     def generate(self, question: str, chunks: list[RetrievedChunk]) -> str:
+        if self._embedder is not None:
+            return self._by_embedding(self._embedder, question, chunks)
+        return self._by_overlap(question, chunks)
+
+    def _by_embedding(
+        self, embedder: EmbeddingProvider, question: str, chunks: list[RetrievedChunk]
+    ) -> str:
+        candidates = [
+            (position, index, sentence)
+            for position, chunk in enumerate(chunks)
+            for index, sentence in enumerate(_sentences(chunk.text))
+        ]
+        if not candidates:
+            return ""
+        query = embedder.embed_query(question)
+        vectors = embedder.embed_documents([sentence for _, _, sentence in candidates])
+        scores = [sum(q * v for q, v in zip(query, vec, strict=True)) for vec in vectors]
+        ranked = sorted(zip(scores, candidates, strict=True), key=lambda x: -x[0])
+        best = ranked[0][0]
+        picked = [item for item in ranked if item[0] >= best - self._margin][: self._max]
+        picked.sort(key=lambda item: (item[1][0], item[1][1]))  # reading order
+        return " ".join(f"{sentence} [{position + 1}]" for _, (position, _, sentence) in picked)
+
+    def _by_overlap(self, question: str, chunks: list[RetrievedChunk]) -> str:
         wanted = _stems(question)
         scored: list[tuple[int, int, int, str]] = []  # (overlap, -chunk_pos, -sent_pos, text)
         for position, chunk in enumerate(chunks):
