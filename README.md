@@ -36,7 +36,8 @@ Demonstrates real vector storage, semantic retrieval, grounded answer/refusal lo
 | Generation | `extractive` (default, no LLM): quotes the best-matching sentences. Optional `bedrock` (AWS Bedrock Converse API) and `openai_compatible` generators for a chat model you configure; neither has been run live (see below) |
 | Evaluation | Separate tuning (33 + 13) and held-out (45 + 16) question sets; Hit@K, Recall@K, nDCG@K, MRR, per-configuration latency, gate sweep, end-to-end behaviour; CI floors on both |
 | MCP | A read-only Model Context Protocol server (stdio) with three bounded tools: `search_policy`, `get_policy_document`, `ask_policy` |
-| Tests | 331 (169 unit, 162 integration against real PostgreSQL + pgvector) |
+| Observability | OpenTelemetry spans for each pipeline stage, Prometheus metrics at `/metrics`, structured JSON logs with request ids, optional OTLP export |
+| Tests | 379 (200 unit, 179 integration against real PostgreSQL + pgvector) |
 | CI | ruff, mypy, unit + integration tests with a pgvector service container, pip-audit, bandit, Docker Compose smoke test |
 
 Only LangGraph is used from the LangChain ecosystem; there is no other LangChain code in the app.
@@ -88,6 +89,16 @@ Point an MCP client at that command. It exposes exactly three read-only tools th
 | `ask_policy` | `question`, optional `filters` | a cited answer, or a refusal when the evidence is insufficient |
 
 The tools take typed, length-limited arguments (a document name must match `[a-z0-9-]`, so paths and SQL are rejected before any code runs), have no SQL, filesystem, shell or network access, and are annotated read-only. Failures come back as MCP tool errors with a safe message; unexpected exceptions are masked; each call has a deadline (`MCP_TOOL_TIMEOUT_S`). The server can be started with fixed metadata filters that a caller can narrow but never change, which is the hook the planned authorization layer will use. It runs over stdio only, deliberately: a network-reachable tool server would need authentication, which this project does not have yet.
+
+### Observability
+
+Enough telemetry to investigate a bad answer without recording what users asked.
+
+- **Traces (OpenTelemetry).** One trace per request: `http.request` → `rag.ask` → `embedding.query`, `retrieval.semantic` / `retrieval.lexical` / `retrieval.hybrid` (with `retrieval.fusion`), `retrieval.rerank`, `evidence.assess`, `generator.generate`, `citation.validate`; MCP calls get an `mcp.tool` span. Attributes are things like retrieval mode, `top_k`, candidate and returned counts, best similarity, the evidence threshold, answer/refusal status and reason, generator and model name, and error *type*.
+- **Metrics.** Request, error, ask and refusal counters (refusals by reason); latency histograms for requests, retrieval, reranking and generation; returned-chunk counts; provider-error and MCP tool call/failure counters. Prometheus text is served at `GET /metrics`; there is no collector or dashboard bundled.
+- **Logs.** One JSON line per event on stderr, carrying the request id (the `X-Request-ID` header is honoured if it is well-formed, otherwise generated, and returned) plus the trace and span ids, so a log line can be matched to its trace.
+- **What is never recorded.** Question text (only its length; a 120-character preview is available behind `RECORD_QUERY_TEXT=true`), document text, answers, request headers or bodies, and credentials. Attribute names that suggest secrets are dropped; credential-shaped strings are masked in logs; span errors carry the exception type, not its message. Tests assert these properties.
+- **Export is optional.** Nothing leaves the process unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set (OTLP over HTTP; verified in a test against a local receiver). `TELEMETRY_ENABLED=false` turns it all off.
 
 ### Tests and evaluation
 
@@ -215,6 +226,7 @@ The gate is the weakest part: on held-out questions it refused 13 of 45 answerab
 - With 34 rows PostgreSQL normally picks an exact scan over the HNSW index. The tests prove the query shape can use the index (`enable_seqscan=off` plus an iterative-scan test), not that the index speeds up this tiny corpus.
 - One embedding model. Hybrid search and cross-encoder reranking are optional and off by default: the defaults were chosen on the tuning set, where hybrid lost and reranking cost too much latency, while the held-out set favoured lexical/hybrid/reranked retrieval. That mismatch is documented, not tuned away, and needs a new held-out set to resolve.
 - The default answer generator is extractive, not an LLM. The optional OpenAI-compatible and Bedrock generators have not been run against a live model, so no live-LLM behaviour or quality is claimed.
+- Observability is instrumented and tested but has not been run against a real collector, tracing backend or dashboard, and `/metrics` is unauthenticated. No load test was run.
 - The MCP server is a tool interface for clients that launch it locally; it has no authentication of its own and is not an agent: no LLM decides which tool to call here, and nothing in this project is multi-agent. It was exercised with an MCP client library in tests, not with a specific AI assistant product.
 - The API has no authentication, rate limiting or multi-tenancy. The Compose file uses local-only demo credentials (`policy_rag_local_only`); they are not secrets.
 - The held-out set is small and written by the system's author; it is not an independent benchmark.
@@ -232,6 +244,7 @@ Copy [`.env.example`](.env.example) to `.env` to override anything; every value 
 | Retrieval | `RETRIEVAL_MODE`, `RRF_K`, `HYBRID_CANDIDATES`, `RERANK_ENABLED`, `RERANK_MODEL` (also a build argument, because the image downloads it), `RERANK_CANDIDATES`, `HNSW_M`, `HNSW_EF_CONSTRUCTION`, `HNSW_EF_SEARCH` |
 | Evidence gate / RAG | `EVIDENCE_MIN_SIMILARITY`, `RAG_MAX_CONTEXT_CHUNKS` |
 | MCP | `MCP_TOOL_TIMEOUT_S` |
+| Observability | `TELEMETRY_ENABLED`, `METRICS_ENABLED`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `RECORD_QUERY_TEXT`, `LOG_FORMAT`, `LOG_LEVEL` |
 | Optional LLM | `LLM_PROVIDER` (`extractive` default, `openai_compatible` or `bedrock`), `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` |
 | Bedrock | `BEDROCK_MODEL_ID`, `BEDROCK_REGION`, `BEDROCK_MAX_TOKENS`, `BEDROCK_TEMPERATURE`, `BEDROCK_TIMEOUT_S`, `BEDROCK_MAX_RETRIES` (AWS credentials are never configured here) |
 

@@ -11,3 +11,8 @@ langgraph==1.2.12
 httpx==0.28.1
 boto3==1.43.108
 mcp==2.3.0
+opentelemetry-api==1.45.0
+opentelemetry-sdk==1.45.0
+opentelemetry-exporter-otlp-proto-http==1.45.0
+opentelemetry-exporter-prometheus==0.66b0
+prometheus-client==0.26.0

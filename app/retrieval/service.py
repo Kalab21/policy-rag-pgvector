@@ -1,11 +1,13 @@
 """Retrieval service: embed the query with the same model as the documents, then search."""
 
+import time
 from collections.abc import Mapping
 from typing import Literal, get_args
 
 from app.db.pool import DictPool
 from app.embeddings.base import EmbeddingProvider
 from app.models.domain import RetrievedChunk
+from app.observability.telemetry import current, set_attributes, span
 from app.retrieval.fusion import DEFAULT_RRF_K
 from app.retrieval.rerank import Reranker, rerank_chunks
 from app.retrieval.store import search_chunks, search_hybrid, search_lexical
@@ -73,10 +75,26 @@ class RetrievalService:
         depth = max(self._rerank_candidates, top_k) if use_rerank else top_k
         # The query is always embedded: even lexical results report a cosine similarity,
         # which the evidence gate relies on.
-        vector = self._embedder.embed_query(query)
+        telemetry = current()
+        with span(
+            "embedding.query",
+            {"model": self._embedder.model_name, **telemetry.query_attributes(query)},
+        ):
+            vector = self._embedder.embed_query(query)
+        started = time.perf_counter()
         found = self._retrieve(chosen, query, vector, depth, filters)
+        telemetry.record("retrieval_ms", (time.perf_counter() - started) * 1000, {"mode": chosen})
         if use_rerank and self._reranker is not None:
-            return rerank_chunks(self._reranker, query, found, top_k)
+            reranker = self._reranker
+            started = time.perf_counter()
+            with span(
+                "retrieval.rerank",
+                {"model": reranker.model_name, "candidates": len(found), "top_k": top_k},
+            ) as sp:
+                found = rerank_chunks(reranker, query, found, top_k)
+                set_attributes(sp, {"returned": len(found)})
+            telemetry.record("rerank_ms", (time.perf_counter() - started) * 1000)
+        telemetry.record("returned_chunks", len(found), {"mode": chosen})
         return found
 
     def _retrieve(
