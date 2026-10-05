@@ -9,3 +9,4 @@ numpy==2.5.3
 fastembed==0.8.1
 langgraph==1.2.12
 httpx==0.28.1
+boto3==1.43.108

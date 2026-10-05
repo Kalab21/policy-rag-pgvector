@@ -74,6 +74,23 @@ _STOPWORDS = frozenset(
 )
 
 
+# A generator returns this (alone) when the sources do not contain the answer.
+NOT_ENOUGH_MARKER = "INSUFFICIENT_EVIDENCE"
+
+
+class GenerationError(Exception):
+    """Base class for answer-generation failures."""
+
+
+class GeneratorUnavailableError(GenerationError):
+    """The model provider could not be reached or refused the request. The message is safe to
+    show: it never contains credentials or request details."""
+
+
+class GeneratorOutputError(GenerationError):
+    """The model answered, but its output could not be validated, so it is not used."""
+
+
 class AnswerGenerator(Protocol):
     @property
     def name(self) -> str: ...

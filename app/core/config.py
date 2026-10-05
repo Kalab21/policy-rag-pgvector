@@ -62,6 +62,15 @@ class Settings(BaseSettings):
     llm_api_key: SecretStr | None = None
     llm_timeout_s: float = Field(default=30.0, gt=0)
 
+    # AWS Bedrock (llm_provider="bedrock"). Credentials come from the standard AWS chain, not
+    # from these settings. The model id has no default: availability is account-specific.
+    bedrock_region: str | None = None
+    bedrock_model_id: str | None = None
+    bedrock_max_tokens: int = Field(default=512, ge=16, le=4096)
+    bedrock_temperature: float = Field(default=0.0, ge=0.0, le=1.0)
+    bedrock_timeout_s: float = Field(default=30.0, gt=0, le=300)
+    bedrock_max_retries: int = Field(default=2, ge=0, le=5)
+
     db_pool_min_size: int = Field(default=1, ge=1)
     db_pool_max_size: int = Field(default=5, ge=1)
 

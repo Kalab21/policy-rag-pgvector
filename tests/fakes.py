@@ -56,3 +56,32 @@ class KeywordReranker:
         self.calls.append((query, list(passages)))
         words = set(query.lower().split())
         return [float(len(words & set(p.lower().replace("\n", " ").split()))) for p in passages]
+
+
+class FakeBedrockClient:
+    """Stands in for boto3's bedrock-runtime client (the one true external boundary)."""
+
+    def __init__(self, response: dict | None = None, error: Exception | None = None) -> None:  # type: ignore[type-arg]
+        self.response = response
+        self.error = error
+        self.requests: list[dict] = []  # type: ignore[type-arg]
+
+    def converse(self, **kwargs):  # type: ignore[no-untyped-def]
+        self.requests.append(kwargs)
+        if self.error is not None:
+            raise self.error
+        assert self.response is not None
+        return self.response
+
+
+def tool_response(payload: object, name: str = "submit_answer") -> dict:  # type: ignore[type-arg]
+    """A Converse response in which the model called a tool with `payload`."""
+    return {
+        "output": {
+            "message": {
+                "role": "assistant",
+                "content": [{"toolUse": {"toolUseId": "t1", "name": name, "input": payload}}],
+            }
+        },
+        "stopReason": "tool_use",
+    }

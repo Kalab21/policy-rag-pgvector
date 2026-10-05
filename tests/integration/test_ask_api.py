@@ -13,7 +13,9 @@ from app.embeddings.fastembed_provider import FastEmbedProvider
 from app.ingestion.loader import load_documents
 from app.ingestion.pipeline import ingest_documents
 from app.main import create_app
+from app.rag.bedrock import BedrockGenerator
 from tests.conftest import TEST_DIM
+from tests.fakes import FakeBedrockClient, tool_response
 from tests.unit.test_rag_graph import ScriptedGenerator
 
 pytestmark = pytest.mark.integration
@@ -145,3 +147,60 @@ def test_invalid_ask_requests_are_rejected_with_422(
     client: TestClient, payload: dict[str, Any]
 ) -> None:
     assert client.post("/api/ask", json=payload).status_code == 422
+
+
+def _ask_with_bedrock(
+    ready: tuple[Settings, FastEmbedProvider], client: FakeBedrockClient
+) -> tuple[int, dict[str, Any]]:
+    settings, embedder = ready
+    generator = BedrockGenerator("test-model", client=client)
+    with TestClient(create_app(settings, embedder, generator)) as api:
+        response = api.post("/api/ask", json={"question": "What is the late payment fee?"})
+    return response.status_code, response.json()
+
+
+def test_a_bedrock_answer_flows_through_the_same_gate_and_citation_checks(
+    ready: tuple[Settings, FastEmbedProvider],
+) -> None:
+    client = FakeBedrockClient(
+        tool_response({"answer": "The late fee is $35 [1].", "citations": [1]})
+    )
+    status, body = _ask_with_bedrock(ready, client)
+    assert status == 200
+    assert body["status"] == "answered"
+    assert body["generator"] == "bedrock:test-model"
+    assert body["sources"][0]["chunk_id"] in body["retrieved_chunk_ids"]
+    # The model only ever saw chunks that passed the evidence gate.
+    assert "$35" in client.requests[0]["messages"][0]["content"][0]["text"]
+
+
+def test_a_bedrock_model_that_finds_no_answer_leads_to_a_refusal(
+    ready: tuple[Settings, FastEmbedProvider],
+) -> None:
+    payload = {"answer": "", "citations": [], "insufficient_evidence": True}
+    _, body = _ask_with_bedrock(ready, FakeBedrockClient(tool_response(payload)))
+    assert body["status"] == "refused"
+    assert body["refusal_reason"] == "generator_found_no_answer"
+
+
+def test_unvalidated_bedrock_output_is_refused_not_served(
+    ready: tuple[Settings, FastEmbedProvider],
+) -> None:
+    client = FakeBedrockClient(tool_response({"answer": "The fee is $99.", "citations": [7]}))
+    status, body = _ask_with_bedrock(ready, client)
+    assert status == 200
+    assert body["status"] == "refused"
+    assert body["refusal_reason"] == "generator_output_invalid"
+    assert "$99" not in body["answer"]
+
+
+def test_a_bedrock_outage_is_a_502_with_a_safe_message(
+    ready: tuple[Settings, FastEmbedProvider],
+) -> None:
+    from botocore.exceptions import ClientError
+
+    secret = "AKIAEXAMPLESECRET1234"
+    error = ClientError({"Error": {"Code": "AccessDeniedException", "Message": secret}}, "Converse")
+    status, body = _ask_with_bedrock(ready, FakeBedrockClient(error=error))
+    assert status == 502
+    assert secret not in str(body)

@@ -17,14 +17,13 @@ from langgraph.graph import END, START, StateGraph
 from app.models.domain import RetrievedChunk
 from app.rag.citations import validate_citations
 from app.rag.evidence import EvidenceAssessment, assess_evidence
-from app.rag.generator import AnswerGenerator
+from app.rag.generator import NOT_ENOUGH_MARKER, AnswerGenerator, GeneratorOutputError
 from app.retrieval.service import RetrievalService
 
 REFUSAL_MESSAGE = (
     "I can't answer that from the policy documents available to me. "
     "The retrieved passages do not contain enough relevant evidence."
 )
-NOT_ENOUGH_MARKER = "INSUFFICIENT_EVIDENCE"
 MAX_QUESTION_CHARS = 1000
 
 AnswerStatus = Literal["answered", "refused"]
@@ -43,6 +42,7 @@ class RagState(TypedDict, total=False):
     cited: list[int]  # 1-based positions in `context`
     invalid_citations: list[int]
     refusal_reason: str
+    generation_failed: bool
 
 
 def build_graph(
@@ -71,7 +71,11 @@ def build_graph(
         return "generate_answer" if state["evidence"].status == "sufficient" else "refuse"
 
     def generate_answer(state: RagState) -> RagState:
-        answer = generator.generate(state["query"], state["context"])
+        try:
+            answer = generator.generate(state["query"], state["context"])
+        except GeneratorOutputError:
+            # The model answered but its output failed validation: fail closed.
+            return {"answer": "", "status": "answered", "generation_failed": True}
         return {"answer": answer, "status": "answered"}
 
     def refuse(state: RagState) -> RagState:
@@ -91,7 +95,11 @@ def build_graph(
                 "answer": REFUSAL_MESSAGE,
                 "status": "refused",
                 "cited": [],
-                "refusal_reason": "generator_found_no_answer",
+                "refusal_reason": (
+                    "generator_output_invalid"
+                    if state.get("generation_failed")
+                    else "generator_found_no_answer"
+                ),
             }
         check = validate_citations(answer, len(state["context"]))
         if not check.grounded:

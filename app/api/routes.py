@@ -16,6 +16,7 @@ from app.models.schemas import (
     SearchRequest,
     SearchResponse,
 )
+from app.rag.generator import GenerationError
 
 router = APIRouter()
 
@@ -92,7 +93,7 @@ def ask(body: AskRequest, request: Request) -> AskResponse:
     filters = body.filters.as_dict() if body.filters else {}
     try:
         result = request.app.state.rag.ask(body.question, body.top_k, filters)
-    except httpx.HTTPError as exc:
+    except (httpx.HTTPError, GenerationError) as exc:
         raise HTTPException(status_code=502, detail="answer generator unavailable") from exc
     return AskResponse(
         question=result.question,
