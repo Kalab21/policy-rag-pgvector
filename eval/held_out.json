@@ -1,0 +1,740 @@
+{
+  "description": "Held-out questions: written after the retrieval pipeline was fixed and never used to choose any setting. See eval/README.md.",
+  "answerable": [
+    {
+      "id": "h01",
+      "question": "What percentage of the loan is deducted as the origination fee at funding?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Origination fee"
+        }
+      ],
+      "answer_contains": [
+        "3.0 percent"
+      ]
+    },
+    {
+      "id": "h02",
+      "question": "Is the origination fee billed separately from the loan?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Origination fee"
+        }
+      ],
+      "answer_contains": [
+        "not charged separately"
+      ]
+    },
+    {
+      "id": "h03",
+      "question": "Can a late fee be applied twice for the same missed installment?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Late payment fee"
+        }
+      ],
+      "answer_contains": [
+        "at most once"
+      ]
+    },
+    {
+      "id": "h04",
+      "question": "How much does it cost when a payment is returned for insufficient funds?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Returned payment fee"
+        }
+      ],
+      "answer_contains": [
+        "$25"
+      ]
+    },
+    {
+      "id": "h05",
+      "question": "How do I avoid the monthly paper statement charge?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Paper statement fee"
+        }
+      ],
+      "answer_contains": [
+        "Electronic statements are free"
+      ]
+    },
+    {
+      "id": "h06",
+      "question": "Are there any extra charges for paying off my loan early?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Prepayment"
+        }
+      ],
+      "answer_contains": [
+        "without additional charges"
+      ]
+    },
+    {
+      "id": "h07",
+      "question": "Which staff member must approve a fee waiver?",
+      "relevant": [
+        {
+          "document": "fee-schedule",
+          "version": "3.1",
+          "section": "Fee waivers"
+        }
+      ],
+      "answer_contains": [
+        "different authorized staff member"
+      ]
+    },
+    {
+      "id": "h08",
+      "question": "How long are marketing preferences kept?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Retention periods"
+        }
+      ],
+      "answer_contains": [
+        "until the customer withdraws consent"
+      ]
+    },
+    {
+      "id": "h09",
+      "question": "Are bank account numbers handled differently from other customer data?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Access to personal data"
+        }
+      ],
+      "answer_contains": [
+        "additional approval"
+      ]
+    },
+    {
+      "id": "h10",
+      "question": "May employees copy customer records to their personal phones?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Access to personal data"
+        }
+      ],
+      "answer_contains": [
+        "may not copy customer data to personal devices"
+      ]
+    },
+    {
+      "id": "h11",
+      "question": "Can a customer ask for wrong data to be fixed?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Data subject requests"
+        }
+      ],
+      "answer_contains": [
+        "corrected"
+      ]
+    },
+    {
+      "id": "h12",
+      "question": "What protocol protects customer data in transit?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Encryption"
+        }
+      ],
+      "answer_contains": [
+        "TLS"
+      ]
+    },
+    {
+      "id": "h13",
+      "question": "Where are encryption keys stored relative to the data they protect?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Encryption"
+        }
+      ],
+      "answer_contains": [
+        "stored separately"
+      ]
+    },
+    {
+      "id": "h14",
+      "question": "Who is told first when a data breach is suspected?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Incident notification"
+        }
+      ],
+      "answer_contains": [
+        "privacy officer"
+      ]
+    },
+    {
+      "id": "h15",
+      "question": "Does an informal expression of dissatisfaction count as a complaint?",
+      "relevant": [
+        {
+          "document": "complaint-handling",
+          "version": "2.2",
+          "section": "Receiving a complaint"
+        }
+      ],
+      "answer_contains": [
+        "Any expression of dissatisfaction"
+      ]
+    },
+    {
+      "id": "h16",
+      "question": "How do customers submit a complaint?",
+      "relevant": [
+        {
+          "document": "complaint-handling",
+          "version": "2.2",
+          "section": "Receiving a complaint"
+        }
+      ],
+      "answer_contains": [
+        "phone, email, letter or through the online portal"
+      ]
+    },
+    {
+      "id": "h17",
+      "question": "What is the standard time limit for a final complaint response?",
+      "relevant": [
+        {
+          "document": "complaint-handling",
+          "version": "2.2",
+          "section": "Acknowledgement and resolution times"
+        }
+      ],
+      "answer_contains": [
+        "15 business days"
+      ]
+    },
+    {
+      "id": "h18",
+      "question": "Who handles complaints alleging discrimination?",
+      "relevant": [
+        {
+          "document": "complaint-handling",
+          "version": "2.2",
+          "section": "Escalation"
+        }
+      ],
+      "answer_contains": [
+        "compliance officer"
+      ]
+    },
+    {
+      "id": "h19",
+      "question": "How often are complaint statistics reported to senior management?",
+      "relevant": [
+        {
+          "document": "complaint-handling",
+          "version": "2.2",
+          "section": "Records and reporting"
+        }
+      ],
+      "answer_contains": [
+        "every quarter"
+      ]
+    },
+    {
+      "id": "h20",
+      "question": "Can a collector call a borrower at 10 p.m.?",
+      "relevant": [
+        {
+          "document": "collections-and-hardship",
+          "version": "1.1",
+          "section": "Contact rules"
+        }
+      ],
+      "answer_contains": [
+        "9 p.m."
+      ]
+    },
+    {
+      "id": "h21",
+      "question": "What must a borrower provide to apply for hardship assistance?",
+      "relevant": [
+        {
+          "document": "collections-and-hardship",
+          "version": "1.1",
+          "section": "Hardship assistance"
+        }
+      ],
+      "answer_contains": [
+        "supporting documents"
+      ]
+    },
+    {
+      "id": "h22",
+      "question": "Do deferred payments change the loan term?",
+      "relevant": [
+        {
+          "document": "collections-and-hardship",
+          "version": "1.1",
+          "section": "Payment deferral"
+        }
+      ],
+      "answer_contains": [
+        "added to the end of the loan term"
+      ]
+    },
+    {
+      "id": "h23",
+      "question": "Does interest keep accruing during a payment deferral?",
+      "relevant": [
+        {
+          "document": "collections-and-hardship",
+          "version": "1.1",
+          "section": "Payment deferral"
+        }
+      ],
+      "answer_contains": [
+        "Interest continues to accrue"
+      ]
+    },
+    {
+      "id": "h24",
+      "question": "When is an account considered delinquent?",
+      "relevant": [
+        {
+          "document": "collections-and-hardship",
+          "version": "1.1",
+          "section": "Delinquency milestones"
+        }
+      ],
+      "answer_contains": [
+        "more than 30 days past due"
+      ]
+    },
+    {
+      "id": "h25",
+      "question": "At what point is an account sent for recovery review?",
+      "relevant": [
+        {
+          "document": "collections-and-hardship",
+          "version": "1.1",
+          "section": "Delinquency milestones"
+        }
+      ],
+      "answer_contains": [
+        "90 days"
+      ]
+    },
+    {
+      "id": "h26",
+      "question": "What personal details are collected before an application can be decided?",
+      "relevant": [
+        {
+          "document": "identity-verification",
+          "version": "1.0",
+          "section": "Required information"
+        }
+      ],
+      "answer_contains": [
+        "taxpayer identification number"
+      ]
+    },
+    {
+      "id": "h27",
+      "question": "Does a driver's license count as acceptable identification?",
+      "relevant": [
+        {
+          "document": "identity-verification",
+          "version": "1.0",
+          "section": "Accepted identification"
+        }
+      ],
+      "answer_contains": [
+        "driver's license"
+      ]
+    },
+    {
+      "id": "h28",
+      "question": "Can an application on hold be funded before a reviewer approves the identity?",
+      "relevant": [
+        {
+          "document": "identity-verification",
+          "version": "1.0",
+          "section": "Verification outcomes"
+        }
+      ],
+      "answer_contains": [
+        "cannot be approved or funded"
+      ]
+    },
+    {
+      "id": "h29",
+      "question": "Can a rejected applicant try again?",
+      "relevant": [
+        {
+          "document": "identity-verification",
+          "version": "1.0",
+          "section": "Rejected applications"
+        }
+      ],
+      "answer_contains": [
+        "may reapply with additional documents"
+      ]
+    },
+    {
+      "id": "h30",
+      "question": "What score range sends an application to an underwriter for manual review?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Credit score decision bands"
+        }
+      ],
+      "answer_contains": [
+        "580 to 639"
+      ]
+    },
+    {
+      "id": "h31",
+      "question": "What happens to an applicant with a score under 580?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Credit score decision bands"
+        }
+      ],
+      "answer_contains": [
+        "declined"
+      ]
+    },
+    {
+      "id": "h32",
+      "question": "What loan terms in months are offered?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Loan amounts and terms"
+        }
+      ],
+      "answer_contains": [
+        "12, 24, 36, 48 or 60"
+      ]
+    },
+    {
+      "id": "h33",
+      "question": "Is collateral required for a personal loan?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Loan amounts and terms"
+        }
+      ],
+      "answer_contains": [
+        "no collateral"
+      ]
+    },
+    {
+      "id": "h34",
+      "question": "Which loan products does the underwriting policy not cover?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Scope"
+        }
+      ],
+      "answer_contains": [
+        "mortgages, auto loans, business loans or credit cards"
+      ]
+    },
+    {
+      "id": "h35",
+      "question": "How is income verified for salaried applicants?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Employment and income verification"
+        }
+      ],
+      "answer_contains": [
+        "two most recent pay stubs"
+      ]
+    },
+    {
+      "id": "h36",
+      "question": "Is unverifiable income counted in the debt-to-income calculation?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Employment and income verification"
+        }
+      ],
+      "answer_contains": [
+        "excluded"
+      ]
+    },
+    {
+      "id": "h37",
+      "question": "Can an automated rerun override a manual underwriting decision?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Manual review"
+        }
+      ],
+      "answer_contains": [
+        "cannot be overwritten"
+      ]
+    },
+    {
+      "id": "h38",
+      "question": "What can an underwriter document to approve an application above the debt-to-income limit?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Debt-to-income limit"
+        }
+      ],
+      "answer_contains": [
+        "compensating factor"
+      ]
+    },
+    {
+      "id": "h39",
+      "question": "What was the minimum loan amount under the earlier underwriting policy?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "1.0",
+          "section": "Loan amounts and terms"
+        }
+      ],
+      "answer_contains": [
+        "$2,000"
+      ],
+      "filters": {
+        "status": "superseded"
+      }
+    },
+    {
+      "id": "h40",
+      "question": "Which credit score band was referred to manual review in the old policy?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "1.0",
+          "section": "Credit score decision bands"
+        }
+      ],
+      "answer_contains": [
+        "620 to 659"
+      ],
+      "filters": {
+        "status": "superseded"
+      }
+    },
+    {
+      "id": "h41",
+      "question": "What credit score and debt-to-income ratio are needed for automated approval?",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Credit score decision bands"
+        },
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Debt-to-income limit"
+        }
+      ],
+      "answer_contains": [
+        "640",
+        "43 percent"
+      ]
+    },
+    {
+      "id": "h42",
+      "question": "What are the retention periods and the deadline for answering a request for my data?",
+      "relevant": [
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Retention periods"
+        },
+        {
+          "document": "data-privacy-and-retention",
+          "version": "1.4",
+          "section": "Data subject requests"
+        }
+      ],
+      "answer_contains": [
+        "7 years",
+        "30 days"
+      ]
+    },
+    {
+      "id": "h43",
+      "question": "compensating factor",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Debt-to-income limit"
+        },
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Manual review"
+        }
+      ],
+      "answer_contains": [
+        "compensating factor"
+      ]
+    },
+    {
+      "id": "h44",
+      "question": "adverse action notice",
+      "relevant": [
+        {
+          "document": "underwriting-policy",
+          "version": "2.0",
+          "section": "Credit score decision bands"
+        }
+      ],
+      "answer_contains": [
+        "adverse action notice"
+      ]
+    },
+    {
+      "id": "h45",
+      "question": "charged off 120 days",
+      "relevant": [
+        {
+          "document": "collections-and-hardship",
+          "version": "1.1",
+          "section": "Delinquency milestones"
+        }
+      ],
+      "answer_contains": [
+        "120 days"
+      ]
+    }
+  ],
+  "unanswerable": [
+    {
+      "id": "x01",
+      "question": "What is the capital of Australia?",
+      "kind": "out_of_domain"
+    },
+    {
+      "id": "x02",
+      "question": "How many moons does Jupiter have?",
+      "kind": "out_of_domain"
+    },
+    {
+      "id": "x03",
+      "question": "Recommend a good restaurant in Chicago.",
+      "kind": "out_of_domain"
+    },
+    {
+      "id": "x04",
+      "question": "What is the best way to learn Spanish?",
+      "kind": "out_of_domain"
+    },
+    {
+      "id": "x05",
+      "question": "How do I reset my email password?",
+      "kind": "out_of_domain"
+    },
+    {
+      "id": "x06",
+      "question": "What is the maximum loan amount for an auto loan?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "x07",
+      "question": "What credit score is required for a mortgage?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "x08",
+      "question": "What is the interest rate on a 36-month loan?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "x09",
+      "question": "Can I pay my loan with a credit card?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "x10",
+      "question": "What are the bank's branch opening hours?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "x11",
+      "question": "Which states is the company licensed in?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "x12",
+      "question": "How do I close my checking account?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "x13",
+      "question": "What is the minimum age to apply?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "x14",
+      "question": "Does the company report payments to credit bureaus?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "x15",
+      "question": "What is the process for refinancing a loan?",
+      "kind": "near_domain"
+    },
+    {
+      "id": "x16",
+      "question": "What is the daily limit for wire transfers?",
+      "kind": "near_domain"
+    }
+  ]
+}
