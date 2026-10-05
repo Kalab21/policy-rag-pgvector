@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     bedrock_timeout_s: float = Field(default=30.0, gt=0, le=300)
     bedrock_max_retries: int = Field(default=2, ge=0, le=5)
 
+    # Deadline for one MCP tool call (seconds).
+    mcp_tool_timeout_s: float = Field(default=30.0, gt=0, le=300)
+
     db_pool_min_size: int = Field(default=1, ge=1)
     db_pool_max_size: int = Field(default=5, ge=1)
 

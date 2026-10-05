@@ -3,16 +3,14 @@
 import httpx
 from fastapi import APIRouter, HTTPException, Request, Response
 
+from app.api.responses import ask_response, search_response
 from app.db.schema import embedding_column_dim, pgvector_version
 from app.ingestion.catalog import list_documents
 from app.models.schemas import (
     AskRequest,
     AskResponse,
-    Citation,
     DocumentInfo,
-    EvidenceInfo,
     HealthResponse,
-    SearchHit,
     SearchRequest,
     SearchResponse,
 )
@@ -56,32 +54,14 @@ def search(body: SearchRequest, request: Request) -> SearchResponse:
     service = request.app.state.retrieval
     filters = body.filters.as_dict() if body.filters else {}
     hits = service.search(body.query, body.top_k, filters, body.mode, body.rerank)
-    return SearchResponse(
+    return search_response(
         query=body.query,
         top_k=body.top_k,
         filters=filters,
         mode=body.mode or service.mode,
         rerank=service.rerank_enabled if body.rerank is None else body.rerank,
         embedding_model=service.model_name,
-        results=[
-            SearchHit(
-                chunk_id=h.chunk_id,
-                document=h.document,
-                title=h.title,
-                version=h.version,
-                category=h.category,
-                status=h.status,
-                section=h.section,
-                text=h.text,
-                distance=h.distance,
-                similarity=h.similarity,
-                score=h.score,
-                rerank_score=h.rerank_score,
-                matched_by=list(h.matched_by),
-                metadata=h.metadata,
-            )
-            for h in hits
-        ],
+        hits=hits,
     )
 
 
@@ -95,28 +75,4 @@ def ask(body: AskRequest, request: Request) -> AskResponse:
         result = request.app.state.rag.ask(body.question, body.top_k, filters)
     except (httpx.HTTPError, GenerationError) as exc:
         raise HTTPException(status_code=502, detail="answer generator unavailable") from exc
-    return AskResponse(
-        question=result.question,
-        answer=result.answer,
-        status=result.status,
-        refusal_reason=result.refusal_reason,
-        evidence=EvidenceInfo(**vars(result.evidence)),
-        sources=[
-            Citation(
-                citation=number,
-                chunk_id=c.chunk_id,
-                document=c.document,
-                title=c.title,
-                version=c.version,
-                category=c.category,
-                status=c.status,
-                section=c.section,
-                similarity=c.similarity,
-                text=c.text,
-            )
-            for number, c in result.sources
-        ],
-        retrieved_chunk_ids=result.retrieved_chunk_ids,
-        generator=result.generator,
-        embedding_model=result.embedding_model,
-    )
+    return ask_response(result)

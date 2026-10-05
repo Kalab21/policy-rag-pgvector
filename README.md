@@ -35,7 +35,8 @@ Demonstrates real vector storage, semantic retrieval, grounded answer/refusal lo
 | RAG | LangGraph state machine: `validate_query → retrieve → assess_evidence → generate_answer \| refuse → validate_citations` |
 | Generation | `extractive` (default, no LLM): quotes the best-matching sentences. Optional `bedrock` (AWS Bedrock Converse API) and `openai_compatible` generators for a chat model you configure; neither has been run live (see below) |
 | Evaluation | Separate tuning (33 + 13) and held-out (45 + 16) question sets; Hit@K, Recall@K, nDCG@K, MRR, per-configuration latency, gate sweep, end-to-end behaviour; CI floors on both |
-| Tests | 260 (135 unit, 125 integration against real PostgreSQL + pgvector) |
+| MCP | A read-only Model Context Protocol server (stdio) with three bounded tools: `search_policy`, `get_policy_document`, `ask_policy` |
+| Tests | 331 (169 unit, 162 integration against real PostgreSQL + pgvector) |
 | CI | ruff, mypy, unit + integration tests with a pgvector service container, pip-audit, bandit, Docker Compose smoke test |
 
 Only LangGraph is used from the LangChain ecosystem; there is no other LangChain code in the app.
@@ -70,6 +71,23 @@ curl -s localhost:8000/api/ask -H 'content-type: application/json' \
 ```
 
 Returns `answer`, `status` (`answered` or `refused`), `sources` (the cited chunks), `retrieved_chunk_ids`, and `evidence` (status, reason, best similarity, threshold). A question the documents do not cover, such as *"How do I bake sourdough bread?"*, comes back `refused` with no sources. Answers use **current** policy unless `filters.status` says otherwise (`"superseded"` returns the older underwriting rules).
+
+### MCP server (tools for AI clients)
+
+```bash
+python -m app.mcp_server                                  # stdio, from the repo with the database reachable
+docker compose exec -T api python -m app.mcp_server       # or inside the running stack
+```
+
+Point an MCP client at that command. It exposes exactly three read-only tools that reuse the same retrieval and RAG services as the HTTP API (the logic is not duplicated):
+
+| Tool | Arguments | Returns |
+|---|---|---|
+| `search_policy` | `query` (1-1000 chars), `top_k` (1-10), optional `filters`, optional `mode` | ranked passages with document, version, section and similarity |
+| `get_policy_document` | `document` (slug), optional `version` | one stored document, passage by passage (size-capped) |
+| `ask_policy` | `question`, optional `filters` | a cited answer, or a refusal when the evidence is insufficient |
+
+The tools take typed, length-limited arguments (a document name must match `[a-z0-9-]`, so paths and SQL are rejected before any code runs), have no SQL, filesystem, shell or network access, and are annotated read-only. Failures come back as MCP tool errors with a safe message; unexpected exceptions are masked; each call has a deadline (`MCP_TOOL_TIMEOUT_S`). The server can be started with fixed metadata filters that a caller can narrow but never change, which is the hook the planned authorization layer will use. It runs over stdio only, deliberately: a network-reachable tool server would need authentication, which this project does not have yet.
 
 ### Tests and evaluation
 
@@ -197,6 +215,7 @@ The gate is the weakest part: on held-out questions it refused 13 of 45 answerab
 - With 34 rows PostgreSQL normally picks an exact scan over the HNSW index. The tests prove the query shape can use the index (`enable_seqscan=off` plus an iterative-scan test), not that the index speeds up this tiny corpus.
 - One embedding model. Hybrid search and cross-encoder reranking are optional and off by default: the defaults were chosen on the tuning set, where hybrid lost and reranking cost too much latency, while the held-out set favoured lexical/hybrid/reranked retrieval. That mismatch is documented, not tuned away, and needs a new held-out set to resolve.
 - The default answer generator is extractive, not an LLM. The optional OpenAI-compatible and Bedrock generators have not been run against a live model, so no live-LLM behaviour or quality is claimed.
+- The MCP server is a tool interface for clients that launch it locally; it has no authentication of its own and is not an agent: no LLM decides which tool to call here, and nothing in this project is multi-agent. It was exercised with an MCP client library in tests, not with a specific AI assistant product.
 - The API has no authentication, rate limiting or multi-tenancy. The Compose file uses local-only demo credentials (`policy_rag_local_only`); they are not secrets.
 - The held-out set is small and written by the system's author; it is not an independent benchmark.
 - Not production-ready. It is a portfolio project that demonstrates the retrieval design, the evidence gate and its evaluation.
@@ -212,6 +231,7 @@ Copy [`.env.example`](.env.example) to `.env` to override anything; every value 
 | Chunking | `CHUNK_SIZE`, `CHUNK_OVERLAP` |
 | Retrieval | `RETRIEVAL_MODE`, `RRF_K`, `HYBRID_CANDIDATES`, `RERANK_ENABLED`, `RERANK_MODEL` (also a build argument, because the image downloads it), `RERANK_CANDIDATES`, `HNSW_M`, `HNSW_EF_CONSTRUCTION`, `HNSW_EF_SEARCH` |
 | Evidence gate / RAG | `EVIDENCE_MIN_SIMILARITY`, `RAG_MAX_CONTEXT_CHUNKS` |
+| MCP | `MCP_TOOL_TIMEOUT_S` |
 | Optional LLM | `LLM_PROVIDER` (`extractive` default, `openai_compatible` or `bedrock`), `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` |
 | Bedrock | `BEDROCK_MODEL_ID`, `BEDROCK_REGION`, `BEDROCK_MAX_TOKENS`, `BEDROCK_TEMPERATURE`, `BEDROCK_TIMEOUT_S`, `BEDROCK_MAX_RETRIES` (AWS credentials are never configured here) |
 

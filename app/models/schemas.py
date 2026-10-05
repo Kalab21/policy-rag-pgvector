@@ -28,11 +28,11 @@ class SearchFilters(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    category: str | None = Field(default=None, examples=["underwriting"])
-    version: str | None = Field(default=None, examples=["2.0"])
+    category: str | None = Field(default=None, max_length=200, examples=["underwriting"])
+    version: str | None = Field(default=None, max_length=50, examples=["2.0"])
     status: Literal["current", "superseded"] | None = Field(default=None, examples=["current"])
-    document: str | None = Field(default=None, examples=["fee-schedule"])
-    section: str | None = Field(default=None, examples=["Late payment fee"])
+    document: str | None = Field(default=None, max_length=200, examples=["fee-schedule"])
+    section: str | None = Field(default=None, max_length=200, examples=["Late payment fee"])
 
     def as_dict(self) -> dict[str, str]:
         return {k: v for k, v in self.model_dump().items() if v is not None}
