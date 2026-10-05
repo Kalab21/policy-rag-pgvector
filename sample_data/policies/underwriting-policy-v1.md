@@ -4,6 +4,9 @@ title: Personal Loan Underwriting Policy
 version: "1.0"
 category: underwriting
 status: superseded
+tenant_id: default
+department: underwriting
+access_level: restricted
 ---
 
 # Personal Loan Underwriting Policy (superseded)

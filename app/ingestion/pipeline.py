@@ -29,6 +29,9 @@ def document_fingerprint(
             "version": doc.version,
             "category": doc.category,
             "status": doc.status,
+            "tenant_id": doc.tenant_id,
+            "department": doc.department,
+            "access_level": doc.access_level,
             "body": doc.body,
             "model": model_name,
             "chunk_size": chunk_size,
@@ -79,8 +82,9 @@ def ingest_documents(
                     conn.execute("DELETE FROM documents WHERE id = %s", (existing["id"],))
                 row = conn.execute(
                     "INSERT INTO documents (name, title, version, category, status, source_path,"
-                    " content_hash, embedding_model, embedding_dim)"
-                    " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                    " content_hash, embedding_model, embedding_dim, tenant_id, department,"
+                    " access_level)"
+                    " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
                     (
                         doc.name,
                         doc.title,
@@ -91,6 +95,9 @@ def ingest_documents(
                         fingerprint,
                         provider.model_name,
                         provider.dimension,
+                        doc.tenant_id,
+                        doc.department,
+                        doc.access_level,
                     ),
                 ).fetchone()
                 assert row is not None

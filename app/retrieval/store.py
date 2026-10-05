@@ -11,6 +11,7 @@ from app.db.pool import DictPool
 from app.models.domain import RetrievedChunk
 from app.observability.telemetry import set_attributes, span
 from app.retrieval.fusion import DEFAULT_RRF_K, rrf_fuse
+from app.security.access import AccessScope
 
 # Metadata keys a caller may filter on. Keys are checked against this list because they
 # are used to build the JSON containment document.
@@ -70,29 +71,36 @@ def search_chunks(
     filters: Mapping[str, str] | None = None,
     ef_search: int = 40,
     iterative_scan: bool = False,
+    access: AccessScope | None = None,
 ) -> list[RetrievedChunk]:
     """The `top_k` chunks closest to `query_vector` by cosine distance.
 
-    Metadata filters are applied in the same SQL statement (`metadata @> filter`), so only
-    matching chunks are ranked and returned. `ORDER BY embedding <=> query` is the shape
-    that lets PostgreSQL use the HNSW index.
+    Metadata filters and the caller's access scope are applied in the same SQL statement
+    (`metadata @> filter AND <access predicate>`), so only permitted, matching chunks are ever
+    ranked or returned. `ORDER BY embedding <=> query` is the shape that lets PostgreSQL use
+    the HNSW index.
     """
     if top_k < 1:
         raise ValueError("top_k must be at least 1")
     clean = validate_filters(filters)
-    where = "WHERE metadata @> %(filter)s" if clean else ""
-    # `where` is one of two fixed strings; every value is a bound parameter.
+    conditions: list[str] = []
+    params: dict[str, Any] = {}
+    if clean:
+        conditions.append("metadata @> %(filter)s")
+        params["filter"] = Jsonb(clean)
+    if access is not None:
+        access_sql, access_params = access.chunk_clause()
+        conditions.append(access_sql)
+        params.update(access_params)
+    where = "WHERE " + " AND ".join(conditions) if conditions else ""
+    # `where` is assembled from fixed fragments; every value is a bound parameter.
     sql = (
         "SELECT id, document_id, source, section, chunk_text, metadata,"  # nosec B608
         " embedding <=> %(query)s AS distance"
         f" FROM chunks {where}"
         " ORDER BY embedding <=> %(query)s LIMIT %(k)s"
     )
-    params: dict[str, Any] = {
-        "query": np.asarray(query_vector, dtype=np.float32),
-        "k": top_k,
-        "filter": Jsonb(clean),
-    }
+    params.update({"query": np.asarray(query_vector, dtype=np.float32), "k": top_k})
 
     with (
         span("retrieval.semantic", {"top_k": top_k, "filters.count": len(clean)}) as sp,
@@ -115,6 +123,7 @@ def search_lexical(
     query_vector: list[float],
     top_k: int,
     filters: Mapping[str, str] | None = None,
+    access: AccessScope | None = None,
 ) -> list[RetrievedChunk]:
     """The `top_k` chunks whose text matches the query's words, by PostgreSQL full-text rank.
 
@@ -127,8 +136,17 @@ def search_lexical(
     if top_k < 1:
         raise ValueError("top_k must be at least 1")
     clean = validate_filters(filters)
-    extra = "AND c.metadata @> %(filter)s" if clean else ""
-    # `extra` is one of two fixed strings; every value is a bound parameter.
+    extra_parts: list[str] = []
+    params: dict[str, Any] = {}
+    if clean:
+        extra_parts.append("c.metadata @> %(filter)s")
+        params["filter"] = Jsonb(clean)
+    if access is not None:
+        access_sql, access_params = access.chunk_clause("c.")
+        extra_parts.append(access_sql)
+        params.update(access_params)
+    extra = "".join(f" AND {part}" for part in extra_parts)
+    # `extra` is assembled from fixed fragments; every value is a bound parameter.
     sql = (
         "WITH q AS (SELECT replace(plainto_tsquery('english', %(text)s)::text, '&', '|')"  # nosec B608
         "::tsquery AS tsq)"
@@ -137,12 +155,9 @@ def search_lexical(
         f" FROM chunks c, q WHERE c.tsv @@ q.tsq {extra}"
         " ORDER BY rank DESC, c.id ASC LIMIT %(k)s"
     )
-    params: dict[str, Any] = {
-        "text": query_text,
-        "query": np.asarray(query_vector, dtype=np.float32),
-        "k": top_k,
-        "filter": Jsonb(clean),
-    }
+    params.update(
+        {"text": query_text, "query": np.asarray(query_vector, dtype=np.float32), "k": top_k}
+    )
     with (
         span("retrieval.lexical", {"top_k": top_k, "filters.count": len(clean)}) as sp,
         pool.connection() as conn,
@@ -162,6 +177,7 @@ def search_hybrid(
     rrf_k: int = DEFAULT_RRF_K,
     ef_search: int = 40,
     iterative_scan: bool = False,
+    access: AccessScope | None = None,
 ) -> list[RetrievedChunk]:
     """Vector search and full-text search, fused with Reciprocal Rank Fusion.
 
@@ -172,8 +188,10 @@ def search_hybrid(
         raise ValueError("top_k must be at least 1")
     depth = max(candidates, top_k)
     with span("retrieval.hybrid", {"top_k": top_k, "candidates": depth, "rrf_k": rrf_k}) as sp:
-        semantic = search_chunks(pool, query_vector, depth, filters, ef_search, iterative_scan)
-        lexical = search_lexical(pool, query_text, query_vector, depth, filters)
+        semantic = search_chunks(
+            pool, query_vector, depth, filters, ef_search, iterative_scan, access
+        )
+        lexical = search_lexical(pool, query_text, query_vector, depth, filters, access)
         with span(
             "retrieval.fusion", {"semantic.count": len(semantic), "lexical.count": len(lexical)}
         ):

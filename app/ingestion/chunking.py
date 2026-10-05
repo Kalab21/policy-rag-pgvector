@@ -20,6 +20,7 @@ import hashlib
 import re
 
 from app.models.domain import Chunk, ParsedDocument
+from app.security.access import ACCESS_RANK
 
 _HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])")
@@ -142,6 +143,11 @@ def chunk_document(
                         "category": doc.category,
                         "status": doc.status,
                         "section": section,
+                        # Authorization attributes, matched in SQL at retrieval time.
+                        "tenant_id": doc.tenant_id,
+                        "department": doc.department,
+                        "access_level": doc.access_level,
+                        "access_rank": str(ACCESS_RANK[doc.access_level]),
                     },
                 )
             )

@@ -1,9 +1,16 @@
 """Read policy documents (markdown with a small front-matter block) from a directory."""
 
+import re
 from pathlib import Path
 
 from app.ingestion.normalize import normalize_text
 from app.models.domain import DocumentStatus, ParsedDocument
+from app.security.access import (
+    ACCESS_LEVELS,
+    DEFAULT_ACCESS_LEVEL,
+    DEFAULT_DEPARTMENT,
+    DEFAULT_TENANT,
+)
 
 REQUIRED_FIELDS = ("name", "title", "version", "category", "status")
 _STATUSES: tuple[DocumentStatus, ...] = ("current", "superseded")
@@ -46,6 +53,17 @@ def parse_document(raw: str, source_path: str) -> ParsedDocument:
             f"{source_path}: status must be one of {_STATUSES}, not {status!r}"
         )
 
+    access_level = fields.get("access_level", DEFAULT_ACCESS_LEVEL)
+    if access_level not in ACCESS_LEVELS:
+        raise DocumentFormatError(
+            f"{source_path}: access_level must be one of {ACCESS_LEVELS}, not {access_level!r}"
+        )
+    tenant_id = fields.get("tenant_id", DEFAULT_TENANT)
+    department = fields.get("department", DEFAULT_DEPARTMENT).lower()
+    for label, value in (("tenant_id", tenant_id), ("department", department)):
+        if not re.fullmatch(r"[A-Za-z0-9._-]{1,64}", value):
+            raise DocumentFormatError(f"{source_path}: invalid {label} {value!r}")
+
     return ParsedDocument(
         name=fields["name"],
         title=fields["title"],
@@ -54,6 +72,9 @@ def parse_document(raw: str, source_path: str) -> ParsedDocument:
         status=status,
         source_path=source_path,
         body=body.strip(),
+        tenant_id=tenant_id,
+        department=department,
+        access_level=access_level,
     )
 
 

@@ -4,6 +4,9 @@ title: Personal Loan Underwriting Policy
 version: "2.0"
 category: underwriting
 status: current
+tenant_id: default
+department: underwriting
+access_level: restricted
 ---
 
 # Personal Loan Underwriting Policy

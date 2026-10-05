@@ -92,6 +92,7 @@ class Telemetry:
         self.generation_ms = meter.create_histogram("policy_rag.generation.duration", unit="ms")
         self.returned_chunks = meter.create_histogram("policy_rag.retrieval.returned_chunks")
         self.provider_errors = meter.create_counter("policy_rag.provider.errors")
+        self.auth_failures = meter.create_counter("policy_rag.auth.failures")
         self.mcp_calls = meter.create_counter("policy_rag.mcp.tool.calls")
         self.mcp_failures = meter.create_counter("policy_rag.mcp.tool.failures")
 

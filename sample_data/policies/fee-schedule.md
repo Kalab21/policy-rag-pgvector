@@ -4,6 +4,9 @@ title: Loan Fee Schedule
 version: "3.1"
 category: fees
 status: current
+tenant_id: default
+department: servicing
+access_level: public
 ---
 
 # Loan Fee Schedule

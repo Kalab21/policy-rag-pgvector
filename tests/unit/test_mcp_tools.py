@@ -114,7 +114,7 @@ class RecordingRetrieval:
     def __init__(self) -> None:
         self.calls: list[tuple[str, int, dict[str, str], str | None]] = []
 
-    def search(self, query, top_k, filters, mode=None):  # type: ignore[no-untyped-def]
+    def search(self, query, top_k, filters, mode=None, **_kwargs):  # type: ignore[no-untyped-def]
         self.calls.append((query, top_k, dict(filters), mode))
         return [chunk(0.9, "text", 1)]
 

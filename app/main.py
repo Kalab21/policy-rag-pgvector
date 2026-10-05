@@ -13,6 +13,7 @@ from app.observability.setup import install_http_observability, telemetry_from_s
 from app.observability.telemetry import Telemetry, set_current
 from app.rag.generator import AnswerGenerator
 from app.retrieval.rerank import Reranker
+from app.security.auth import TokenValidator
 from app.services import open_services
 
 
@@ -27,6 +28,8 @@ def create_app(
     configure_logging(settings.log_format, settings.log_level)
     telemetry = telemetry or telemetry_from_settings(settings)
     set_current(telemetry)
+    # Misconfigured authentication must stop the server at startup, never run it open.
+    validator = TokenValidator(settings) if settings.auth_mode == "jwt" else None
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -36,6 +39,7 @@ def create_app(
         app.state.retrieval = services.retrieval
         app.state.rag = services.rag
         app.state.telemetry = telemetry
+        app.state.validator = validator
         try:
             yield
         finally:

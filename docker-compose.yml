@@ -34,6 +34,17 @@ services:
       HNSW_M: ${HNSW_M:-16}
       HNSW_EF_CONSTRUCTION: ${HNSW_EF_CONSTRUCTION:-64}
       HNSW_EF_SEARCH: ${HNSW_EF_SEARCH:-40}
+      # Authentication. "off" is a local demo mode (no login, every document readable).
+      AUTH_MODE: ${AUTH_MODE:-off}
+      AUTH_ISSUER: ${AUTH_ISSUER:-}
+      AUTH_AUDIENCE: ${AUTH_AUDIENCE:-}
+      AUTH_JWKS_URL: ${AUTH_JWKS_URL:-}
+      AUTH_PUBLIC_KEY: ${AUTH_PUBLIC_KEY:-}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-}
+      AUTH_ROLES_CLAIM: ${AUTH_ROLES_CLAIM:-roles}
+      AUTH_TENANT_CLAIM: ${AUTH_TENANT_CLAIM:-tenant_id}
+      AUTH_DEPARTMENT_CLAIM: ${AUTH_DEPARTMENT_CLAIM:-department}
+      AUTH_LEEWAY_S: ${AUTH_LEEWAY_S:-30}
       # Observability. Nothing is exported unless OTEL_EXPORTER_OTLP_ENDPOINT is set.
       TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-true}
       METRICS_ENABLED: ${METRICS_ENABLED:-true}

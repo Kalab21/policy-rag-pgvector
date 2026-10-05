@@ -11,6 +11,7 @@ from app.rag.evidence import EvidenceAssessment
 from app.rag.generator import AnswerGenerator
 from app.rag.graph import AnswerStatus, build_graph, run_graph
 from app.retrieval.service import RetrievalService
+from app.security.access import AccessScope
 
 
 @dataclass(frozen=True)
@@ -40,7 +41,11 @@ class RagService:
         self._graph = build_graph(retrieval, generator, min_similarity, max_context_chunks)
 
     def ask(
-        self, question: str, top_k: int = 5, filters: Mapping[str, str] | None = None
+        self,
+        question: str,
+        top_k: int = 5,
+        filters: Mapping[str, str] | None = None,
+        access: AccessScope | None = None,
     ) -> AskResult:
         # Answer from current policy unless the caller explicitly asks for another status.
         effective = {"status": "current", **(filters or {})}
@@ -52,10 +57,11 @@ class RagService:
             "retrieval.mode": self._retrieval.mode,
             "rerank.enabled": self._retrieval.rerank_enabled,
             "generator": self._generator.name,
+            "auth.scoped": access is not None,
             **telemetry.query_attributes(question),
         }
         with span("rag.ask", attributes) as sp:
-            state = run_graph(self._graph, question, top_k, effective)
+            state = run_graph(self._graph, question, top_k, effective, access)
             evidence = state["evidence"]
             set_attributes(
                 sp,

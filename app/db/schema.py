@@ -25,6 +25,13 @@ CREATE TABLE IF NOT EXISTS documents (
     UNIQUE (name, version)
 );
 
+-- Authorization attributes (see app/security/access.py). ADD COLUMN IF NOT EXISTS upgrades
+-- tables created before they existed; the defaults describe an unlabelled document.
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS tenant_id TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS department TEXT NOT NULL DEFAULT 'general';
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS access_level TEXT NOT NULL DEFAULT 'internal'
+    CHECK (access_level IN ('public', 'internal', 'restricted', 'confidential'));
+
 CREATE TABLE IF NOT EXISTS chunks (
     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     document_id BIGINT      NOT NULL REFERENCES documents (id) ON DELETE CASCADE,

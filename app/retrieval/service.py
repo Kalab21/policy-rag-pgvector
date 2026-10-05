@@ -11,6 +11,7 @@ from app.observability.telemetry import current, set_attributes, span
 from app.retrieval.fusion import DEFAULT_RRF_K
 from app.retrieval.rerank import Reranker, rerank_chunks
 from app.retrieval.store import search_chunks, search_hybrid, search_lexical
+from app.security.access import AccessScope
 
 RetrievalMode = Literal["semantic", "lexical", "hybrid"]
 RETRIEVAL_MODES: tuple[str, ...] = get_args(RetrievalMode)
@@ -60,6 +61,7 @@ class RetrievalService:
         filters: Mapping[str, str] | None = None,
         mode: RetrievalMode | None = None,
         rerank: bool | None = None,
+        access: AccessScope | None = None,
     ) -> list[RetrievedChunk]:
         query = query.strip()
         if not query:
@@ -82,7 +84,7 @@ class RetrievalService:
         ):
             vector = self._embedder.embed_query(query)
         started = time.perf_counter()
-        found = self._retrieve(chosen, query, vector, depth, filters)
+        found = self._retrieve(chosen, query, vector, depth, filters, access)
         telemetry.record("retrieval_ms", (time.perf_counter() - started) * 1000, {"mode": chosen})
         if use_rerank and self._reranker is not None:
             reranker = self._reranker
@@ -104,13 +106,14 @@ class RetrievalService:
         vector: list[float],
         depth: int,
         filters: Mapping[str, str] | None,
+        access: AccessScope | None,
     ) -> list[RetrievedChunk]:
         if mode == "semantic":
             return search_chunks(
-                self._pool, vector, depth, filters, self._ef_search, self._iterative_scan
+                self._pool, vector, depth, filters, self._ef_search, self._iterative_scan, access
             )
         if mode == "lexical":
-            return search_lexical(self._pool, query, vector, depth, filters)
+            return search_lexical(self._pool, query, vector, depth, filters, access)
         return search_hybrid(
             self._pool,
             query,
@@ -121,4 +124,5 @@ class RetrievalService:
             rrf_k=self._rrf_k,
             ef_search=self._ef_search,
             iterative_scan=self._iterative_scan,
+            access=access,
         )

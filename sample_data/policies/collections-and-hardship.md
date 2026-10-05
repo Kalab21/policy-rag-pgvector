@@ -4,6 +4,9 @@ title: Collections and Hardship Policy
 version: "1.1"
 category: servicing
 status: current
+tenant_id: default
+department: servicing
+access_level: internal
 ---
 
 # Collections and Hardship Policy

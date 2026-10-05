@@ -4,6 +4,9 @@ title: Customer Identity Verification Procedure
 version: "1.0"
 category: compliance
 status: current
+tenant_id: default
+department: compliance
+access_level: internal
 ---
 
 # Customer Identity Verification Procedure
