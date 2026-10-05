@@ -14,6 +14,7 @@ from app.embeddings.factory import get_embedding_provider
 from app.rag.factory import get_generator
 from app.rag.generator import AnswerGenerator
 from app.rag.service import RagService
+from app.retrieval.rerank import CrossEncoderReranker, Reranker
 from app.retrieval.service import RetrievalService
 from app.retrieval.store import supports_iterative_scan
 
@@ -22,6 +23,7 @@ def create_app(
     settings: Settings | None = None,
     embedder: EmbeddingProvider | None = None,
     generator: AnswerGenerator | None = None,
+    reranker: Reranker | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
 
@@ -57,6 +59,9 @@ def create_app(
             mode=settings.retrieval_mode,
             rrf_k=settings.rrf_k,
             candidates=settings.hybrid_candidates,
+            reranker=reranker or CrossEncoderReranker(settings.rerank_model),
+            rerank_enabled=settings.rerank_enabled,
+            rerank_candidates=settings.rerank_candidates,
         )
         app.state.rag = RagService(
             app.state.retrieval,
