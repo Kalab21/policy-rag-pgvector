@@ -1,5 +1,5 @@
 [project]
-name = "policy-rag-pgvector"
+name = "policy-rag-platform"
 version = "0.1.0"
 description = "RAG retrieval platform: PostgreSQL + pgvector semantic search over policy documents"
 requires-python = ">=3.12"

@@ -1,4 +1,6 @@
-# Policy RAG — pgvector Retrieval Platform
+# Policy RAG Platform
+
+**Grounded RAG with semantic and optional hybrid retrieval, built on PostgreSQL + pgvector.**
 
 A small retrieval-augmented generation (RAG) service over **synthetic** lending-policy documents. Embeddings live in **PostgreSQL + pgvector**, search is a real vector query with metadata filters, and an **evidence gate** makes the service refuse questions the documents cannot support instead of guessing.
 

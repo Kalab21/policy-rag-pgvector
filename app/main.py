@@ -70,7 +70,7 @@ def create_app(
             pool.close()
 
     app = FastAPI(
-        title="Policy RAG — pgvector Retrieval Platform",
+        title="Policy RAG Platform",
         version="0.1.0",
         lifespan=lifespan,
     )
