@@ -54,12 +54,13 @@ def search(body: SearchRequest, request: Request) -> SearchResponse:
     distance, optionally restricted to chunks whose metadata matches `filters`."""
     service = request.app.state.retrieval
     filters = body.filters.as_dict() if body.filters else {}
-    hits = service.search(body.query, body.top_k, filters, body.mode)
+    hits = service.search(body.query, body.top_k, filters, body.mode, body.rerank)
     return SearchResponse(
         query=body.query,
         top_k=body.top_k,
         filters=filters,
         mode=body.mode or service.mode,
+        rerank=service.rerank_enabled if body.rerank is None else body.rerank,
         embedding_model=service.model_name,
         results=[
             SearchHit(
@@ -74,6 +75,7 @@ def search(body: SearchRequest, request: Request) -> SearchResponse:
                 distance=h.distance,
                 similarity=h.similarity,
                 score=h.score,
+                rerank_score=h.rerank_score,
                 matched_by=list(h.matched_by),
                 metadata=h.metadata,
             )

@@ -17,6 +17,7 @@ from app.ingestion.loader import load_documents
 from app.ingestion.pipeline import ingest_documents
 from app.rag.generator import ExtractiveGenerator
 from app.rag.service import RagService
+from app.retrieval.rerank import CrossEncoderReranker
 from app.retrieval.service import RetrievalService
 from tests.conftest import TEST_DIM
 
@@ -30,7 +31,9 @@ def test_retrieval_and_gate_meet_the_quality_floor(clean_db: str) -> None:
     try:
         docs = load_documents(Path("sample_data/policies"))
         ingest_documents(pool, embedder, docs, settings.chunk_size, settings.chunk_overlap)
-        retrieval = RetrievalService(pool, embedder, settings.hnsw_ef_search, True)
+        retrieval = RetrievalService(
+            pool, embedder, settings.hnsw_ef_search, True, reranker=CrossEncoderReranker()
+        )
         rag = RagService(
             retrieval,
             ExtractiveGenerator(embedder),

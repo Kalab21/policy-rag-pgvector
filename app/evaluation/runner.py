@@ -33,6 +33,7 @@ def evaluate_retrieval(
     ks: Sequence[int],
     current_only: bool,
     mode: RetrievalMode | None = None,
+    rerank: bool | None = None,
 ) -> dict[str, Any]:
     top_k = max(ks)
     hits: dict[int, list[float]] = {k: [] for k in ks}
@@ -43,7 +44,7 @@ def evaluate_retrieval(
         relevant = set(q.relevant)
         ranked = [
             chunk_key(c)
-            for c in retrieval.search(q.question, top_k, _filters(q, current_only), mode)
+            for c in retrieval.search(q.question, top_k, _filters(q, current_only), mode, rerank)
         ]
         for k in ks:
             hits[k].append(hit_at_k(ranked, relevant, k))
@@ -152,7 +153,12 @@ def evaluate_modes(
     """The same questions through each retrieval mode, under the current-policy filter."""
     modes: list[RetrievalMode] = ["semantic", "lexical", "hybrid"]
     assert set(modes) == set(RETRIEVAL_MODES)
-    return {m: evaluate_retrieval(retrieval, questions, ks, True, m) for m in modes}
+    variants: list[tuple[str, RetrievalMode, bool]] = [(m, m, False) for m in modes]
+    variants += [("semantic+rerank", "semantic", True), ("hybrid+rerank", "hybrid", True)]
+    return {
+        name: evaluate_retrieval(retrieval, questions, ks, True, mode, rerank)
+        for name, mode, rerank in variants
+    }
 
 
 def run_evaluation(

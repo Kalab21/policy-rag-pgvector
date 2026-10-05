@@ -15,7 +15,8 @@ RUN pip install -r requirements.txt
 # Download the embedding model at build time so the container starts without network access.
 ARG EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 ENV FASTEMBED_CACHE_DIR=/opt/models
-RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='${EMBEDDING_MODEL}', cache_dir='/opt/models')"     && chmod -R a+rX /opt/models
+ARG RERANK_MODEL=Xenova/ms-marco-MiniLM-L-6-v2
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='${EMBEDDING_MODEL}', cache_dir='/opt/models')"     && python -c "from fastembed.rerank.cross_encoder import TextCrossEncoder; TextCrossEncoder(model_name='${RERANK_MODEL}', cache_dir='/opt/models')"     && chmod -R a+rX /opt/models
 
 COPY app ./app
 COPY scripts ./scripts

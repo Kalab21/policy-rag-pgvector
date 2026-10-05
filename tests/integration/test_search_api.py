@@ -16,7 +16,7 @@ from app.ingestion.loader import load_documents
 from app.ingestion.pipeline import ingest_documents
 from app.main import create_app
 from tests.conftest import TEST_DIM
-from tests.fakes import HashingEmbedder
+from tests.fakes import HashingEmbedder, KeywordReranker
 
 pytestmark = pytest.mark.integration
 
@@ -111,9 +111,27 @@ def test_the_default_mode_is_reported(client: TestClient) -> None:
         {"query": "fees", "filters": {"status": "draft"}},
         {"query": "fees", "unexpected": 1},
         {"query": "fees", "mode": "fuzzy"},
+        {"query": "fees", "rerank": "maybe"},
     ],
 )
 def test_invalid_requests_are_rejected_with_422(
     client: TestClient, payload: dict[str, object]
 ) -> None:
     assert client.post("/api/search", json=payload).status_code == 422
+
+
+def test_search_reports_whether_reranking_was_applied(clean_db: str) -> None:
+    settings = Settings(database_url=clean_db, embedding_dim=TEST_DIM, _env_file=None)  # type: ignore[call-arg]
+    embedder = HashingEmbedder(TEST_DIM)
+    pool = create_pool(clean_db)
+    try:
+        ingest_documents(pool, embedder, load_documents(Path("sample_data/policies")), 400, 80)
+    finally:
+        pool.close()
+    with TestClient(create_app(settings, embedder, reranker=KeywordReranker())) as client:
+        off = client.post("/api/search", json={"query": "late payment fee"}).json()
+        on = client.post("/api/search", json={"query": "late payment fee", "rerank": True}).json()
+    assert off["rerank"] is False
+    assert all(h["rerank_score"] is None for h in off["results"])
+    assert on["rerank"] is True
+    assert all(h["rerank_score"] is not None for h in on["results"])

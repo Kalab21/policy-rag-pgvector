@@ -41,3 +41,18 @@ class HashingEmbedder:
 class FailingEmbedder(HashingEmbedder):
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         raise RuntimeError("embedding service unavailable")
+
+
+class KeywordReranker:
+    """A deterministic stand-in for the cross-encoder: scores a passage by how many of the
+    query's words it contains. Records what it was asked to score."""
+
+    model_name = "test-keyword-reranker"
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, list[str]]] = []
+
+    def score(self, query: str, passages: list[str]) -> list[float]:
+        self.calls.append((query, list(passages)))
+        words = set(query.lower().split())
+        return [float(len(words & set(p.lower().replace("\n", " ").split()))) for p in passages]

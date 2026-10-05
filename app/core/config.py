@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     rrf_k: int = Field(default=60, ge=1, le=1000)
     hybrid_candidates: int = Field(default=30, ge=1, le=200)
 
+    # Cross-encoder reranking of the retrieved candidates. Off by default: it must earn that
+    # place on held-out evaluation. `rerank_candidates` is how many candidates the retriever
+    # hands to the cross-encoder (never the whole corpus); the final top_k is cut afterwards.
+    rerank_enabled: bool = False
+    rerank_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
+    rerank_candidates: int = Field(default=20, ge=1, le=100)
+
     # Evidence gate: the best chunk must be at least this cosine-similar to the question,
     # otherwise /api/ask refuses. Calibrated on the sample corpus (see README).
     evidence_min_similarity: float = Field(default=0.55, ge=0.0, le=1.0)

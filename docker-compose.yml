@@ -23,6 +23,7 @@ services:
       args:
         # The image downloads this model at build time, so build and runtime must agree.
         EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+        RERANK_MODEL: ${RERANK_MODEL:-Xenova/ms-marco-MiniLM-L-6-v2}
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-policy_rag}:${POSTGRES_PASSWORD:-policy_rag_local_only}@db:5432/${POSTGRES_DB:-policy_rag}
       # Defaults below match app/core/config.py.
@@ -36,6 +37,9 @@ services:
       RETRIEVAL_MODE: ${RETRIEVAL_MODE:-semantic}
       RRF_K: ${RRF_K:-60}
       HYBRID_CANDIDATES: ${HYBRID_CANDIDATES:-30}
+      RERANK_ENABLED: ${RERANK_ENABLED:-false}
+      RERANK_MODEL: ${RERANK_MODEL:-Xenova/ms-marco-MiniLM-L-6-v2}
+      RERANK_CANDIDATES: ${RERANK_CANDIDATES:-20}
       EVIDENCE_MIN_SIMILARITY: ${EVIDENCE_MIN_SIMILARITY:-0.55}
       RAG_MAX_CONTEXT_CHUNKS: ${RAG_MAX_CONTEXT_CHUNKS:-4}
       LLM_PROVIDER: ${LLM_PROVIDER:-extractive}

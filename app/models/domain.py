@@ -58,4 +58,5 @@ class RetrievedChunk:
     # Ranking score of the retriever that produced this result: the RRF score for hybrid
     # search, the full-text rank for lexical search, None for plain vector search.
     score: float | None = None
+    rerank_score: float | None = None  # cross-encoder score, when the result was reranked
     matched_by: tuple[str, ...] = ()  # which retrievers returned it: "semantic", "lexical"

@@ -20,6 +20,7 @@ from app.evaluation.runner import run_evaluation
 from app.ingestion.catalog import list_documents
 from app.rag.factory import get_generator
 from app.rag.service import RagService
+from app.retrieval.rerank import CrossEncoderReranker
 from app.retrieval.service import RetrievalService
 from app.retrieval.store import supports_iterative_scan
 
@@ -100,7 +101,16 @@ def main() -> None:
         with pool.connection() as conn:
             version = pgvector_version(conn)
         retrieval = RetrievalService(
-            pool, provider, settings.hnsw_ef_search, supports_iterative_scan(version)
+            pool,
+            provider,
+            settings.hnsw_ef_search,
+            supports_iterative_scan(version),
+            mode=settings.retrieval_mode,
+            rrf_k=settings.rrf_k,
+            candidates=settings.hybrid_candidates,
+            reranker=CrossEncoderReranker(settings.rerank_model),
+            rerank_enabled=settings.rerank_enabled,
+            rerank_candidates=settings.rerank_candidates,
         )
         rag = RagService(
             retrieval, generator, settings.evidence_min_similarity, settings.rag_max_context_chunks
@@ -115,6 +125,8 @@ def main() -> None:
             "chunk_size": settings.chunk_size,
             "chunk_overlap": settings.chunk_overlap,
             "evidence_min_similarity": settings.evidence_min_similarity,
+            "rerank_model": settings.rerank_model,
+            "rerank_candidates": settings.rerank_candidates,
             "generator": generator.name,
         }
     finally:

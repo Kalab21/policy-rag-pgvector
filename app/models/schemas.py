@@ -47,6 +47,10 @@ class SearchRequest(BaseModel):
     mode: Literal["semantic", "lexical", "hybrid"] | None = Field(
         default=None, description="Defaults to the server's RETRIEVAL_MODE."
     )
+    rerank: bool | None = Field(
+        default=None,
+        description="Cross-encoder reranking. Defaults to the server's RERANK_ENABLED.",
+    )
 
     @field_validator("query")
     @classmethod
@@ -69,6 +73,7 @@ class SearchHit(BaseModel):
     distance: float
     similarity: float
     score: float | None = None
+    rerank_score: float | None = None
     matched_by: list[str] = []
     metadata: dict[str, str]
 
@@ -128,6 +133,7 @@ class SearchResponse(BaseModel):
     top_k: int
     filters: dict[str, str]
     mode: str
+    rerank: bool
     embedding_model: str
     metric: str = "cosine"
     results: list[SearchHit]
