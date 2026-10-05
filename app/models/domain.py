@@ -55,3 +55,7 @@ class RetrievedChunk:
     distance: float  # cosine distance, 0 (identical direction) to 2 (opposite)
     similarity: float  # 1 - distance, i.e. the cosine similarity
     metadata: dict[str, str] = field(default_factory=dict)
+    # Ranking score of the retriever that produced this result: the RRF score for hybrid
+    # search, the full-text rank for lexical search, None for plain vector search.
+    score: float | None = None
+    matched_by: tuple[str, ...] = ()  # which retrievers returned it: "semantic", "lexical"

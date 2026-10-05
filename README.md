@@ -24,6 +24,7 @@ Demonstrates real vector storage, semantic retrieval, grounded answer/refusal lo
 | Vector store | PostgreSQL 16 + pgvector (`pgvector/pgvector:pg16`, 0.8.7 in the runs below), `vector(384)` column |
 | Index | HNSW, `vector_cosine_ops`, `m=16`, `ef_construction=64`; `hnsw.ef_search=40` per query |
 | Similarity | Cosine distance (`<=>`); similarity = 1 − distance |
+| Retrieval modes | `semantic` (pgvector, default), `lexical` (PostgreSQL full-text), `hybrid` (both, fused with Reciprocal Rank Fusion), selectable per request |
 | Metadata filtering | In the same SQL statement: `metadata @> filter` (JSONB, GIN-indexed) on `category`, `version`, `status`, `document`, `section` |
 | Filtered ANN | pgvector ≥ 0.8 iterative scan (`hnsw.iterative_scan = strict_order`) lets HNSW keep scanning for matching rows after the filter, which helps fill `top_k` when at least `top_k` matching rows exist |
 | Embeddings | `sentence-transformers/all-MiniLM-L6-v2` via [fastembed](https://github.com/qdrant/fastembed) (ONNX, runs locally on CPU), behind an `EmbeddingProvider` interface. Model name, dimension and a content hash are stored per document |
@@ -31,7 +32,7 @@ Demonstrates real vector storage, semantic retrieval, grounded answer/refusal lo
 | RAG | LangGraph state machine: `validate_query → retrieve → assess_evidence → generate_answer \| refuse → validate_citations` |
 | Generation | `extractive` (default, no LLM): quotes the best-matching sentences. Optional `openai_compatible` client for a chat model you configure |
 | Evaluation | 33 answerable + 13 unanswerable gold questions; Hit@K, Recall@K, MRR, gate sweep, end-to-end behaviour |
-| Tests | 139 (71 unit, 68 integration against real PostgreSQL + pgvector) |
+| Tests | 168 (78 unit, 90 integration against real PostgreSQL + pgvector) |
 | CI | ruff, mypy, unit + integration tests with a pgvector service container, pip-audit, bandit, Docker Compose smoke test |
 
 Only LangGraph is used from the LangChain ecosystem; there is no other LangChain code in the app.
@@ -89,6 +90,8 @@ Without `TEST_DATABASE_URL`, integration tests are skipped. They drop and recrea
 
 **Idempotent ingestion.** A document's fingerprint covers its content, the embedding model and the chunk settings. Running ingest again skips unchanged documents without re-embedding, replaces a changed document atomically, and leaves existing rows untouched if embedding fails.
 
+**Retrieval modes.** `semantic` embeds the query and searches pgvector. `lexical` uses a PostgreSQL full-text index (a generated `tsvector` column with a GIN index, English stemming, stop words dropped, any content word may match). `hybrid` runs both under the same metadata filter and merges the two ranked lists with Reciprocal Rank Fusion (`score = Σ 1/(60 + rank)`), which uses ranks only, so cosine similarities and text-search ranks never have to be compared. Why bother: dense embeddings capture meaning but can rank a chunk containing an exact identifier or rare term below vaguely related text; an integration test builds that situation with hand-made vectors, and hybrid retrieval surfaces the chunk. Choose a mode with `RETRIEVAL_MODE` or `"mode"` in a `/api/search` request. Results from every mode carry a real cosine similarity, because the evidence gate depends on it.
+
 **Retrieval is separate from RAG.** `app/retrieval` knows nothing about LLMs or the graph; `app/rag` calls it as a service.
 
 **Evidence gate.** Before any text is generated, the best chunk's cosine similarity must reach `EVIDENCE_MIN_SIMILARITY` (default `0.55`). Chunks below it are never given to the generator.
@@ -109,6 +112,16 @@ From `python -m scripts.evaluate_retrieval` on this repository's sample data: 7 
 | `status=current` (what `/api/ask` uses) | 90.9% | 93.9% | 100.0% | 0.939 |
 
 Recall@K equals Hit@K here because each question has exactly one relevant section.
+
+**Retrieval modes** (same 33 questions, `status=current`):
+
+| Mode | Hit@1 | Hit@3 | Hit@5 | MRR |
+|---|---|---|---|---|
+| semantic (default) | 90.9% | 93.9% | 100.0% | 0.939 |
+| lexical | 84.8% | 97.0% | 100.0% | 0.907 |
+| hybrid (RRF) | 84.8% | 97.0% | 100.0% | 0.912 |
+
+Hybrid did **not** beat semantic-only on this set: it found the right chunk more often in the top 3 but ranked it first less often, so MRR is lower. Because it is not at least as good, `semantic` stays the default and `hybrid` is optional. This set has few exact-term questions and is in-sample, so it says little about corpora where identifiers matter.
 
 **Evidence gate** (top-1 similarity under current policy):
 
@@ -133,7 +146,7 @@ Read these numbers with care:
 
 - Synthetic documents only, English only, markdown input only (no PDF/HTML parsing).
 - With 34 rows PostgreSQL normally picks an exact scan over the HNSW index. The tests prove the query shape can use the index (`enable_seqscan=off` plus an iterative-scan test), not that the index speeds up this tiny corpus.
-- One embedding model, no reranker, no hybrid (keyword + vector) search.
+- One embedding model and no reranker. Hybrid search exists but is optional because it did not beat semantic-only on the evaluation set.
 - The default answer generator is extractive, not an LLM. The optional LLM client is untested against a live endpoint.
 - The API has no authentication, rate limiting or multi-tenancy. The Compose file uses local-only demo credentials (`policy_rag_local_only`); they are not secrets.
 - Not production-ready. It is a portfolio project that demonstrates the retrieval design, the evidence gate and its evaluation.
@@ -147,7 +160,7 @@ Copy [`.env.example`](.env.example) to `.env` to override anything; every value 
 | PostgreSQL | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST_PORT` (Compose builds `DATABASE_URL` from them) |
 | Embeddings | `EMBEDDING_MODEL` (also a build argument, because the image downloads the model at build time), `EMBEDDING_DIM` |
 | Chunking | `CHUNK_SIZE`, `CHUNK_OVERLAP` |
-| Retrieval | `HNSW_M`, `HNSW_EF_CONSTRUCTION`, `HNSW_EF_SEARCH` |
+| Retrieval | `RETRIEVAL_MODE`, `RRF_K`, `HYBRID_CANDIDATES`, `HNSW_M`, `HNSW_EF_CONSTRUCTION`, `HNSW_EF_SEARCH` |
 | Evidence gate / RAG | `EVIDENCE_MIN_SIMILARITY`, `RAG_MAX_CONTEXT_CHUNKS` |
 | Optional LLM | `LLM_PROVIDER` (`extractive` default, or `openai_compatible`), `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` |
 

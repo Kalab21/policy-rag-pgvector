@@ -79,6 +79,24 @@ def test_a_filter_with_no_matches_gives_an_empty_result_not_an_error(client: Tes
     assert response.json()["results"] == []
 
 
+@pytest.mark.parametrize("mode", ["semantic", "lexical", "hybrid"])
+def test_every_retrieval_mode_is_available_per_request(client: TestClient, mode: str) -> None:
+    response = client.post(
+        "/api/search", json={"query": "late payment fee grace period", "top_k": 3, "mode": mode}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["mode"] == mode
+    assert body["results"]
+    if mode == "hybrid":
+        assert all(h["score"] is not None and h["matched_by"] for h in body["results"])
+
+
+def test_the_default_mode_is_reported(client: TestClient) -> None:
+    body = client.post("/api/search", json={"query": "late fee"}).json()
+    assert body["mode"] == "semantic"
+
+
 @pytest.mark.parametrize(
     "payload",
     [
@@ -92,6 +110,7 @@ def test_a_filter_with_no_matches_gives_an_empty_result_not_an_error(client: Tes
         {"query": "fees", "filters": {"colour": "red"}},
         {"query": "fees", "filters": {"status": "draft"}},
         {"query": "fees", "unexpected": 1},
+        {"query": "fees", "mode": "fuzzy"},
     ],
 )
 def test_invalid_requests_are_rejected_with_422(

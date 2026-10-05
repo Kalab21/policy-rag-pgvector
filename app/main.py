@@ -54,6 +54,9 @@ def create_app(
             provider,
             ef_search=settings.hnsw_ef_search,
             iterative_scan=supports_iterative_scan(version),
+            mode=settings.retrieval_mode,
+            rrf_k=settings.rrf_k,
+            candidates=settings.hybrid_candidates,
         )
         app.state.rag = RagService(
             app.state.retrieval,
