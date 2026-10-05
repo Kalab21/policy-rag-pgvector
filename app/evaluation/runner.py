@@ -10,7 +10,7 @@ from app.evaluation.gold import AnswerableQuestion, ChunkKey, GoldSet
 from app.evaluation.metrics import hit_at_k, mean, recall_at_k, reciprocal_rank
 from app.models.domain import RetrievedChunk
 from app.rag.service import RagService
-from app.retrieval.service import RetrievalService
+from app.retrieval.service import RETRIEVAL_MODES, RetrievalMode, RetrievalService
 
 DEFAULT_KS = (1, 3, 5)
 DEFAULT_THRESHOLDS = (0.40, 0.45, 0.50, 0.55, 0.60, 0.65)
@@ -32,6 +32,7 @@ def evaluate_retrieval(
     questions: Sequence[AnswerableQuestion],
     ks: Sequence[int],
     current_only: bool,
+    mode: RetrievalMode | None = None,
 ) -> dict[str, Any]:
     top_k = max(ks)
     hits: dict[int, list[float]] = {k: [] for k in ks}
@@ -41,7 +42,8 @@ def evaluate_retrieval(
     for q in questions:
         relevant = set(q.relevant)
         ranked = [
-            chunk_key(c) for c in retrieval.search(q.question, top_k, _filters(q, current_only))
+            chunk_key(c)
+            for c in retrieval.search(q.question, top_k, _filters(q, current_only), mode)
         ]
         for k in ks:
             hits[k].append(hit_at_k(ranked, relevant, k))
@@ -144,6 +146,15 @@ def evaluate_ask(rag: RagService, gold: GoldSet, top_k: int) -> dict[str, Any]:
     }
 
 
+def evaluate_modes(
+    retrieval: RetrievalService, questions: Sequence[AnswerableQuestion], ks: Sequence[int]
+) -> dict[str, Any]:
+    """The same questions through each retrieval mode, under the current-policy filter."""
+    modes: list[RetrievalMode] = ["semantic", "lexical", "hybrid"]
+    assert set(modes) == set(RETRIEVAL_MODES)
+    return {m: evaluate_retrieval(retrieval, questions, ks, True, m) for m in modes}
+
+
 def run_evaluation(
     retrieval: RetrievalService,
     rag: RagService,
@@ -154,6 +165,7 @@ def run_evaluation(
     return {
         "retrieval_all_versions": evaluate_retrieval(retrieval, gold.answerable, ks, False),
         "retrieval_current_policy": evaluate_retrieval(retrieval, gold.answerable, ks, True),
+        "retrieval_modes": evaluate_modes(retrieval, gold.answerable, ks),
         "evidence_gate": evaluate_gate(retrieval, gold, thresholds),
         "ask": evaluate_ask(rag, gold, max(ks)),
     }

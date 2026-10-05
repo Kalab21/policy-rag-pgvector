@@ -122,6 +122,13 @@ jobs:
           assert body['results'] and {h['category'] for h in body['results']} == {'fees'}
           print('search ok:', body['results'][0]['section'])
           "
+          curl -sf -X POST http://localhost:8000/api/search -H 'content-type: application/json' -d '{"query": "late payment fee", "top_k": 3, "mode": "hybrid"}' | python -c "
+          import json, sys
+          body = json.load(sys.stdin)
+          assert body['mode'] == 'hybrid' and body['results'], body
+          assert all(h['matched_by'] and h['score'] is not None for h in body['results']), body
+          print('hybrid search ok:', body['results'][0]['section'])
+          "
           curl -sf -X POST http://localhost:8000/api/ask             -H 'content-type: application/json'             -d '{"question": "What is the late payment fee?"}'             | python -c "
           import json, sys
           body = json.load(sys.stdin)

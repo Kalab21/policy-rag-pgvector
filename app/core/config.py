@@ -1,6 +1,7 @@
 """Application settings, read from environment variables (and an optional local .env file)."""
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -33,6 +34,13 @@ class Settings(BaseSettings):
     hnsw_m: int = Field(default=16, ge=2, le=100)
     hnsw_ef_construction: int = Field(default=64, ge=4, le=1000)
     hnsw_ef_search: int = Field(default=40, ge=1, le=1000)
+
+    # Retrieval: "semantic" (pgvector only), "lexical" (PostgreSQL full-text only) or "hybrid"
+    # (both, fused with Reciprocal Rank Fusion). Each retriever contributes its top
+    # `hybrid_candidates` to the fusion.
+    retrieval_mode: Literal["semantic", "lexical", "hybrid"] = "semantic"
+    rrf_k: int = Field(default=60, ge=1, le=1000)
+    hybrid_candidates: int = Field(default=30, ge=1, le=200)
 
     # Evidence gate: the best chunk must be at least this cosine-similar to the question,
     # otherwise /api/ask refuses. Calibrated on the sample corpus (see README).

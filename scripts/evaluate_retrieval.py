@@ -45,6 +45,14 @@ def render(report: dict[str, Any]) -> str:
         if r["missed_at_max_k"]:
             lines.append(f"Not found in top {ks[-1]}: {', '.join(r['missed_at_max_k'])}")
 
+    lines += ["\nRetrieval mode comparison (status=current)", ""]
+    lines += ["| Mode | Hit@1 | Hit@3 | Hit@5 | MRR |", "|---|---|---|---|---|"]
+    for name, r in report["retrieval_modes"].items():
+        h = r["hit_at_k"]
+        lines.append(
+            f"| {name} | {_pct(h['1'])} | {_pct(h['3'])} | {_pct(h['5'])} | {r['mrr']:.3f} |"
+        )
+
     lines += ["\nEvidence gate sweep (top-1 cosine similarity, status=current)", ""]
     lines += ["| Threshold | Answerable passing | Unanswerable refused |", "|---|---|---|"]
     for row in report["evidence_gate"]:

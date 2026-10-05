@@ -44,6 +44,9 @@ class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=1000, examples=["What is the late payment fee?"])
     top_k: int = Field(default=5, ge=1, le=20)
     filters: SearchFilters | None = None
+    mode: Literal["semantic", "lexical", "hybrid"] | None = Field(
+        default=None, description="Defaults to the server's RETRIEVAL_MODE."
+    )
 
     @field_validator("query")
     @classmethod
@@ -65,6 +68,8 @@ class SearchHit(BaseModel):
     text: str
     distance: float
     similarity: float
+    score: float | None = None
+    matched_by: list[str] = []
     metadata: dict[str, str]
 
 
@@ -122,6 +127,7 @@ class SearchResponse(BaseModel):
     query: str
     top_k: int
     filters: dict[str, str]
+    mode: str
     embedding_model: str
     metric: str = "cosine"
     results: list[SearchHit]

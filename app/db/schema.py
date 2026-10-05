@@ -39,6 +39,14 @@ CREATE TABLE IF NOT EXISTS chunks (
     UNIQUE (document_id, chunk_index)
 );
 
+-- Full-text search vector over the title, section and text. A generated column keeps it in
+-- sync with the row; ADD COLUMN IF NOT EXISTS upgrades tables created before it existed.
+ALTER TABLE chunks ADD COLUMN IF NOT EXISTS tsv tsvector
+    GENERATED ALWAYS AS (
+        to_tsvector('english', source || ' ' || section || ' ' || chunk_text)
+    ) STORED;
+CREATE INDEX IF NOT EXISTS chunks_tsv_gin ON chunks USING gin (tsv);
+
 CREATE INDEX IF NOT EXISTS chunks_document_id_idx ON chunks (document_id);
 
 -- Metadata filters use the containment operator (metadata @> '{{"category": "fees"}}').
