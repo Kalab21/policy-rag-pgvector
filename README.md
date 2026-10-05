@@ -33,9 +33,9 @@ Demonstrates real vector storage, semantic retrieval, grounded answer/refusal lo
 | Embeddings | `sentence-transformers/all-MiniLM-L6-v2` via [fastembed](https://github.com/qdrant/fastembed) (ONNX, runs locally on CPU), behind an `EmbeddingProvider` interface. Model name, dimension and a content hash are stored per document |
 | Ingestion | Markdown with front matter → normalise → section-aware chunking → embed → store. Idempotent (see below) |
 | RAG | LangGraph state machine: `validate_query → retrieve → assess_evidence → generate_answer \| refuse → validate_citations` |
-| Generation | `extractive` (default, no LLM): quotes the best-matching sentences. Optional `openai_compatible` client for a chat model you configure |
+| Generation | `extractive` (default, no LLM): quotes the best-matching sentences. Optional `bedrock` (AWS Bedrock Converse API) and `openai_compatible` generators for a chat model you configure; neither has been run live (see below) |
 | Evaluation | Separate tuning (33 + 13) and held-out (45 + 16) question sets; Hit@K, Recall@K, nDCG@K, MRR, per-configuration latency, gate sweep, end-to-end behaviour; CI floors on both |
-| Tests | 218 (97 unit, 121 integration against real PostgreSQL + pgvector) |
+| Tests | 260 (135 unit, 125 integration against real PostgreSQL + pgvector) |
 | CI | ruff, mypy, unit + integration tests with a pgvector service container, pip-audit, bandit, Docker Compose smoke test |
 
 Only LangGraph is used from the LangChain ecosystem; there is no other LangChain code in the app.
@@ -103,7 +103,11 @@ Without `TEST_DATABASE_URL`, integration tests are skipped. They drop and recrea
 
 **Citation check.** The generator cites sources as `[1]`, `[2]`. Markers that do not match a supplied chunk are removed, and an answer left with no valid citation is refused.
 
-**Two generators.** `extractive` needs no model: it ranks sentences from the retrieved chunks by embedding similarity to the question and quotes them. It cannot invent text, but it also cannot synthesise across sentences. `openai_compatible` posts to any chat-completions endpoint you configure (`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`); it is covered by unit tests against a mocked HTTP transport and **has not been run against a live LLM**.
+**Three generators.** `extractive` (default) needs no model: it ranks sentences from the retrieved chunks by embedding similarity to the question and quotes them. It cannot invent text, but it also cannot synthesise across sentences. `openai_compatible` posts to any chat-completions endpoint you configure (`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`). `bedrock` calls AWS Bedrock through the official SDK (`boto3`) and the Converse API. Every generator only ever receives chunks that passed the evidence gate, and every answer goes through the same citation check afterwards.
+
+**Bedrock details.** Set `LLM_PROVIDER=bedrock` and `BEDROCK_MODEL_ID` (there is deliberately no default model: which models an account can use is account-specific), optionally `BEDROCK_REGION`, `BEDROCK_MAX_TOKENS`, `BEDROCK_TEMPERATURE` (default 0), `BEDROCK_TIMEOUT_S` and `BEDROCK_MAX_RETRIES`. Credentials come from the normal AWS chain (environment, profile, or an IAM role) and are never read from this project's settings or committed. The model is forced to answer through a tool call with a fixed JSON schema (answer, cited source numbers, an explicit "insufficient evidence" flag); the result is validated and the generator **fails closed**: output that is not valid, cites a source that was not supplied, or cites nothing is never served and the question is refused (`generator_output_invalid`). The sources are passed as untrusted reference text, and provider errors are translated to a safe 502 that carries no credentials or request details.
+
+**Bedrock status: implemented, not live-validated.** The adapter is covered by unit and integration tests with the SDK client mocked, and the real SDK path was exercised only as far as AWS credential resolution (it fails with a clear message when none exist). No real Bedrock request has been made, because no AWS credentials or model access were available. To validate it against your own account (this makes one billable call): `BEDROCK_MODEL_ID=<model> BEDROCK_REGION=<region> python -m scripts.bedrock_smoke`.
 
 ## Measured results
 
@@ -192,7 +196,7 @@ The gate is the weakest part: on held-out questions it refused 13 of 45 answerab
 - Synthetic documents only, English only, markdown input only (no PDF/HTML parsing).
 - With 34 rows PostgreSQL normally picks an exact scan over the HNSW index. The tests prove the query shape can use the index (`enable_seqscan=off` plus an iterative-scan test), not that the index speeds up this tiny corpus.
 - One embedding model. Hybrid search and cross-encoder reranking are optional and off by default: the defaults were chosen on the tuning set, where hybrid lost and reranking cost too much latency, while the held-out set favoured lexical/hybrid/reranked retrieval. That mismatch is documented, not tuned away, and needs a new held-out set to resolve.
-- The default answer generator is extractive, not an LLM. The optional LLM client is untested against a live endpoint.
+- The default answer generator is extractive, not an LLM. The optional OpenAI-compatible and Bedrock generators have not been run against a live model, so no live-LLM behaviour or quality is claimed.
 - The API has no authentication, rate limiting or multi-tenancy. The Compose file uses local-only demo credentials (`policy_rag_local_only`); they are not secrets.
 - The held-out set is small and written by the system's author; it is not an independent benchmark.
 - Not production-ready. It is a portfolio project that demonstrates the retrieval design, the evidence gate and its evaluation.
@@ -208,7 +212,8 @@ Copy [`.env.example`](.env.example) to `.env` to override anything; every value 
 | Chunking | `CHUNK_SIZE`, `CHUNK_OVERLAP` |
 | Retrieval | `RETRIEVAL_MODE`, `RRF_K`, `HYBRID_CANDIDATES`, `RERANK_ENABLED`, `RERANK_MODEL` (also a build argument, because the image downloads it), `RERANK_CANDIDATES`, `HNSW_M`, `HNSW_EF_CONSTRUCTION`, `HNSW_EF_SEARCH` |
 | Evidence gate / RAG | `EVIDENCE_MIN_SIMILARITY`, `RAG_MAX_CONTEXT_CHUNKS` |
-| Optional LLM | `LLM_PROVIDER` (`extractive` default, or `openai_compatible`), `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` |
+| Optional LLM | `LLM_PROVIDER` (`extractive` default, `openai_compatible` or `bedrock`), `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` |
+| Bedrock | `BEDROCK_MODEL_ID`, `BEDROCK_REGION`, `BEDROCK_MAX_TOKENS`, `BEDROCK_TEMPERATURE`, `BEDROCK_TIMEOUT_S`, `BEDROCK_MAX_RETRIES` (AWS credentials are never configured here) |
 
 Settings that exist in the application but are deliberately not forwarded by Compose: `DATABASE_URL` (derived from the `POSTGRES_*` values), `EMBEDDING_PROVIDER` (only `fastembed` is implemented), `SAMPLE_DATA_DIR`, `AUTO_INIT_SCHEMA`, `DB_POOL_MIN_SIZE`, `DB_POOL_MAX_SIZE` and `LLM_TIMEOUT_S`. They work when running the app directly, not through Compose.
 

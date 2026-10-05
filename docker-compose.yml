@@ -47,6 +47,14 @@ services:
       LLM_BASE_URL: ${LLM_BASE_URL:-}
       LLM_MODEL: ${LLM_MODEL:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
+      # Bedrock (LLM_PROVIDER=bedrock). Credentials are NOT set here: mount or inject them the
+      # standard AWS way (AWS_PROFILE with a mounted ~/.aws, or an IAM role when deployed).
+      BEDROCK_REGION: ${BEDROCK_REGION:-}
+      BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-}
+      BEDROCK_MAX_TOKENS: ${BEDROCK_MAX_TOKENS:-512}
+      BEDROCK_TEMPERATURE: ${BEDROCK_TEMPERATURE:-0.0}
+      BEDROCK_TIMEOUT_S: ${BEDROCK_TIMEOUT_S:-30}
+      BEDROCK_MAX_RETRIES: ${BEDROCK_MAX_RETRIES:-2}
     ports:
       - "8000:8000"
     depends_on:
