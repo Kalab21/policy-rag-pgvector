@@ -3,11 +3,19 @@
 Everything here is measured against the live database; nothing is estimated.
 """
 
+import time
 from collections.abc import Sequence
 from typing import Any
 
 from app.evaluation.gold import AnswerableQuestion, ChunkKey, GoldSet
-from app.evaluation.metrics import hit_at_k, mean, recall_at_k, reciprocal_rank
+from app.evaluation.metrics import (
+    hit_at_k,
+    mean,
+    ndcg_at_k,
+    percentile,
+    recall_at_k,
+    reciprocal_rank,
+)
 from app.models.domain import RetrievedChunk
 from app.rag.service import RagService
 from app.retrieval.service import RETRIEVAL_MODES, RetrievalMode, RetrievalService
@@ -38,6 +46,7 @@ def evaluate_retrieval(
     top_k = max(ks)
     hits: dict[int, list[float]] = {k: [] for k in ks}
     recalls: dict[int, list[float]] = {k: [] for k in ks}
+    ndcgs: dict[int, list[float]] = {k: [] for k in ks}
     rr: list[float] = []
     misses: list[str] = []
     for q in questions:
@@ -49,6 +58,7 @@ def evaluate_retrieval(
         for k in ks:
             hits[k].append(hit_at_k(ranked, relevant, k))
             recalls[k].append(recall_at_k(ranked, relevant, k))
+            ndcgs[k].append(ndcg_at_k(ranked, relevant, k))
         rr.append(reciprocal_rank(ranked, relevant))
         if hit_at_k(ranked, relevant, top_k) == 0.0:
             misses.append(q.id)
@@ -56,6 +66,7 @@ def evaluate_retrieval(
         "questions": len(questions),
         "hit_at_k": {str(k): mean(v) for k, v in hits.items()},
         "recall_at_k": {str(k): mean(v) for k, v in recalls.items()},
+        "ndcg_at_k": {str(k): mean(v) for k, v in ndcgs.items()},
         "mrr": mean(rr),
         "missed_at_max_k": misses,
     }
@@ -147,18 +158,48 @@ def evaluate_ask(rag: RagService, gold: GoldSet, top_k: int) -> dict[str, Any]:
     }
 
 
-def evaluate_modes(
-    retrieval: RetrievalService, questions: Sequence[AnswerableQuestion], ks: Sequence[int]
-) -> dict[str, Any]:
-    """The same questions through each retrieval mode, under the current-policy filter."""
+def retrieval_variants() -> list[tuple[str, RetrievalMode, bool]]:
+    """(name, mode, rerank) for every retrieval configuration that is compared."""
     modes: list[RetrievalMode] = ["semantic", "lexical", "hybrid"]
     assert set(modes) == set(RETRIEVAL_MODES)
     variants: list[tuple[str, RetrievalMode, bool]] = [(m, m, False) for m in modes]
     variants += [("semantic+rerank", "semantic", True), ("hybrid+rerank", "hybrid", True)]
+    return variants
+
+
+def evaluate_modes(
+    retrieval: RetrievalService, questions: Sequence[AnswerableQuestion], ks: Sequence[int]
+) -> dict[str, Any]:
+    """The same questions through each retrieval configuration, under the current-policy filter."""
     return {
         name: evaluate_retrieval(retrieval, questions, ks, True, mode, rerank)
-        for name, mode, rerank in variants
+        for name, mode, rerank in retrieval_variants()
     }
+
+
+def measure_latency(
+    retrieval: RetrievalService, questions: Sequence[AnswerableQuestion], top_k: int = 5
+) -> dict[str, Any]:
+    """Wall-clock time of one search per question, in milliseconds, per configuration.
+
+    One untimed call per configuration first loads any model. This is a single-process timing
+    on whatever machine runs it, over a handful of queries: indicative, not a benchmark.
+    """
+    result: dict[str, Any] = {}
+    for name, mode, rerank in retrieval_variants():
+        retrieval.search(questions[0].question, top_k, {"status": "current"}, mode, rerank)
+        timings: list[float] = []
+        for q in questions:
+            started = time.perf_counter()
+            retrieval.search(q.question, top_k, _filters(q, True), mode, rerank)
+            timings.append((time.perf_counter() - started) * 1000)
+        result[name] = {
+            "queries": len(timings),
+            "mean_ms": mean(timings),
+            "p50_ms": percentile(timings, 50),
+            "p95_ms": percentile(timings, 95),
+        }
+    return result
 
 
 def run_evaluation(
@@ -172,6 +213,7 @@ def run_evaluation(
         "retrieval_all_versions": evaluate_retrieval(retrieval, gold.answerable, ks, False),
         "retrieval_current_policy": evaluate_retrieval(retrieval, gold.answerable, ks, True),
         "retrieval_modes": evaluate_modes(retrieval, gold.answerable, ks),
+        "latency": measure_latency(retrieval, gold.answerable),
         "evidence_gate": evaluate_gate(retrieval, gold, thresholds),
         "ask": evaluate_ask(rag, gold, max(ks)),
     }

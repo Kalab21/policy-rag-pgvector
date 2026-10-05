@@ -1,179 +1,4 @@
 {
-  "retrieval_all_versions": {
-    "questions": 33,
-    "hit_at_k": {
-      "1": 0.8787878787878788,
-      "3": 0.9393939393939394,
-      "5": 1.0
-    },
-    "recall_at_k": {
-      "1": 0.8787878787878788,
-      "3": 0.9393939393939394,
-      "5": 1.0
-    },
-    "mrr": 0.9242424242424242,
-    "missed_at_max_k": []
-  },
-  "retrieval_current_policy": {
-    "questions": 33,
-    "hit_at_k": {
-      "1": 0.9090909090909091,
-      "3": 0.9393939393939394,
-      "5": 1.0
-    },
-    "recall_at_k": {
-      "1": 0.9090909090909091,
-      "3": 0.9393939393939394,
-      "5": 1.0
-    },
-    "mrr": 0.9393939393939394,
-    "missed_at_max_k": []
-  },
-  "retrieval_modes": {
-    "semantic": {
-      "questions": 33,
-      "hit_at_k": {
-        "1": 0.9090909090909091,
-        "3": 0.9393939393939394,
-        "5": 1.0
-      },
-      "recall_at_k": {
-        "1": 0.9090909090909091,
-        "3": 0.9393939393939394,
-        "5": 1.0
-      },
-      "mrr": 0.9393939393939394,
-      "missed_at_max_k": []
-    },
-    "lexical": {
-      "questions": 33,
-      "hit_at_k": {
-        "1": 0.8484848484848485,
-        "3": 0.9696969696969697,
-        "5": 1.0
-      },
-      "recall_at_k": {
-        "1": 0.8484848484848485,
-        "3": 0.9696969696969697,
-        "5": 1.0
-      },
-      "mrr": 0.9065656565656566,
-      "missed_at_max_k": []
-    },
-    "hybrid": {
-      "questions": 33,
-      "hit_at_k": {
-        "1": 0.8484848484848485,
-        "3": 0.9696969696969697,
-        "5": 1.0
-      },
-      "recall_at_k": {
-        "1": 0.8484848484848485,
-        "3": 0.9696969696969697,
-        "5": 1.0
-      },
-      "mrr": 0.9116161616161615,
-      "missed_at_max_k": []
-    },
-    "semantic+rerank": {
-      "questions": 33,
-      "hit_at_k": {
-        "1": 0.9696969696969697,
-        "3": 0.9696969696969697,
-        "5": 1.0
-      },
-      "recall_at_k": {
-        "1": 0.9696969696969697,
-        "3": 0.9696969696969697,
-        "5": 1.0
-      },
-      "mrr": 0.9772727272727273,
-      "missed_at_max_k": []
-    },
-    "hybrid+rerank": {
-      "questions": 33,
-      "hit_at_k": {
-        "1": 0.9696969696969697,
-        "3": 0.9696969696969697,
-        "5": 1.0
-      },
-      "recall_at_k": {
-        "1": 0.9696969696969697,
-        "3": 0.9696969696969697,
-        "5": 1.0
-      },
-      "mrr": 0.9772727272727273,
-      "missed_at_max_k": []
-    }
-  },
-  "evidence_gate": [
-    {
-      "threshold": 0.4,
-      "answerable_pass_rate": 1.0,
-      "unanswerable_refused_rate": 0.6923076923076923
-    },
-    {
-      "threshold": 0.45,
-      "answerable_pass_rate": 0.9696969696969697,
-      "unanswerable_refused_rate": 0.8461538461538461
-    },
-    {
-      "threshold": 0.5,
-      "answerable_pass_rate": 0.8787878787878788,
-      "unanswerable_refused_rate": 0.8461538461538461
-    },
-    {
-      "threshold": 0.55,
-      "answerable_pass_rate": 0.8181818181818182,
-      "unanswerable_refused_rate": 0.9230769230769231
-    },
-    {
-      "threshold": 0.6,
-      "answerable_pass_rate": 0.6666666666666666,
-      "unanswerable_refused_rate": 1.0
-    },
-    {
-      "threshold": 0.65,
-      "answerable_pass_rate": 0.5454545454545454,
-      "unanswerable_refused_rate": 1.0
-    },
-    {
-      "similarity_range": {
-        "answerable_min": 0.43041563034057617,
-        "unanswerable_max": 0.5816282976644227
-      }
-    }
-  ],
-  "ask": {
-    "answerable": {
-      "questions": 33,
-      "answered_correctly": 23,
-      "answered_incorrectly": 4,
-      "wrongly_refused": 6,
-      "correct_rate": 0.696969696969697,
-      "problems": [
-        "a04: wrongly refused (insufficient_evidence)",
-        "a06: answered, contains expected facts=False, cites a relevant chunk=True",
-        "a08: wrongly refused (insufficient_evidence)",
-        "a13: wrongly refused (insufficient_evidence)",
-        "a14: wrongly refused (insufficient_evidence)",
-        "a16: answered, contains expected facts=False, cites a relevant chunk=True",
-        "a20: wrongly refused (insufficient_evidence)",
-        "a21: answered, contains expected facts=False, cites a relevant chunk=False",
-        "a22: wrongly refused (insufficient_evidence)",
-        "a23: answered, contains expected facts=True, cites a relevant chunk=False"
-      ]
-    },
-    "unanswerable": {
-      "questions": 13,
-      "refused": 12,
-      "answered_anyway": 1,
-      "refusal_rate": 0.9230769230769231,
-      "problems": [
-        "u11 (near_domain): answered: What APR does a personal loan carry?"
-      ]
-    }
-  },
   "setup": {
     "documents": 7,
     "chunks": 34,
@@ -182,9 +7,522 @@
     "pgvector_version": "0.8.7",
     "chunk_size": 700,
     "chunk_overlap": 120,
-    "evidence_min_similarity": 0.55,
+    "retrieval_mode": "semantic",
+    "rerank_enabled": false,
     "rerank_model": "Xenova/ms-marco-MiniLM-L-6-v2",
     "rerank_candidates": 20,
+    "rrf_k": 60,
+    "evidence_min_similarity": 0.55,
     "generator": "extractive"
+  },
+  "tuning": {
+    "retrieval_all_versions": {
+      "questions": 33,
+      "hit_at_k": {
+        "1": 0.8787878787878788,
+        "3": 0.9393939393939394,
+        "5": 1.0
+      },
+      "recall_at_k": {
+        "1": 0.8787878787878788,
+        "3": 0.9393939393939394,
+        "5": 1.0
+      },
+      "ndcg_at_k": {
+        "1": 0.8787878787878788,
+        "3": 0.9170260456709974,
+        "5": 0.943127655251203
+      },
+      "mrr": 0.9242424242424242,
+      "missed_at_max_k": []
+    },
+    "retrieval_current_policy": {
+      "questions": 33,
+      "hit_at_k": {
+        "1": 0.9090909090909091,
+        "3": 0.9393939393939394,
+        "5": 1.0
+      },
+      "recall_at_k": {
+        "1": 0.9090909090909091,
+        "3": 0.9393939393939394,
+        "5": 1.0
+      },
+      "ndcg_at_k": {
+        "1": 0.9090909090909091,
+        "3": 0.9282099925324684,
+        "5": 0.9543116021126741
+      },
+      "mrr": 0.9393939393939394,
+      "missed_at_max_k": []
+    },
+    "retrieval_modes": {
+      "semantic": {
+        "questions": 33,
+        "hit_at_k": {
+          "1": 0.9090909090909091,
+          "3": 0.9393939393939394,
+          "5": 1.0
+        },
+        "recall_at_k": {
+          "1": 0.9090909090909091,
+          "3": 0.9393939393939394,
+          "5": 1.0
+        },
+        "ndcg_at_k": {
+          "1": 0.9090909090909091,
+          "3": 0.9282099925324684,
+          "5": 0.9543116021126741
+        },
+        "mrr": 0.9393939393939394,
+        "missed_at_max_k": []
+      },
+      "lexical": {
+        "questions": 33,
+        "hit_at_k": {
+          "1": 0.8484848484848485,
+          "3": 0.9696969696969697,
+          "5": 1.0
+        },
+        "recall_at_k": {
+          "1": 0.8484848484848485,
+          "3": 0.9696969696969697,
+          "5": 1.0
+        },
+        "ndcg_at_k": {
+          "1": 0.8484848484848485,
+          "3": 0.9170260456709974,
+          "5": 0.9300768504611003
+        },
+        "mrr": 0.9065656565656566,
+        "missed_at_max_k": []
+      },
+      "hybrid": {
+        "questions": 33,
+        "hit_at_k": {
+          "1": 0.8484848484848485,
+          "3": 0.9696969696969697,
+          "5": 1.0
+        },
+        "recall_at_k": {
+          "1": 0.8484848484848485,
+          "3": 0.9696969696969697,
+          "5": 1.0
+        },
+        "ndcg_at_k": {
+          "1": 0.8484848484848485,
+          "3": 0.9209936139610416,
+          "5": 0.9340444187511444
+        },
+        "mrr": 0.9116161616161615,
+        "missed_at_max_k": []
+      },
+      "semantic+rerank": {
+        "questions": 33,
+        "hit_at_k": {
+          "1": 0.9696969696969697,
+          "3": 0.9696969696969697,
+          "5": 1.0
+        },
+        "recall_at_k": {
+          "1": 0.9696969696969697,
+          "3": 0.9696969696969697,
+          "5": 1.0
+        },
+        "ndcg_at_k": {
+          "1": 0.9696969696969697,
+          "3": 0.9696969696969697,
+          "5": 0.9827477744870725
+        },
+        "mrr": 0.9772727272727273,
+        "missed_at_max_k": []
+      },
+      "hybrid+rerank": {
+        "questions": 33,
+        "hit_at_k": {
+          "1": 0.9696969696969697,
+          "3": 0.9696969696969697,
+          "5": 1.0
+        },
+        "recall_at_k": {
+          "1": 0.9696969696969697,
+          "3": 0.9696969696969697,
+          "5": 1.0
+        },
+        "ndcg_at_k": {
+          "1": 0.9696969696969697,
+          "3": 0.9696969696969697,
+          "5": 0.9827477744870725
+        },
+        "mrr": 0.9772727272727273,
+        "missed_at_max_k": []
+      }
+    },
+    "latency": {
+      "semantic": {
+        "queries": 33,
+        "mean_ms": 8.320424247137977,
+        "p50_ms": 8.156399941071868,
+        "p95_ms": 11.235459940508004
+      },
+      "lexical": {
+        "queries": 33,
+        "mean_ms": 6.674066662195731,
+        "p50_ms": 6.663199979811907,
+        "p95_ms": 8.050539973191917
+      },
+      "hybrid": {
+        "queries": 33,
+        "mean_ms": 10.13641212502438,
+        "p50_ms": 10.030000004917383,
+        "p95_ms": 12.304479954764247
+      },
+      "semantic+rerank": {
+        "queries": 33,
+        "mean_ms": 296.6487302945814,
+        "p50_ms": 320.2012999681756,
+        "p95_ms": 375.8427199441939
+      },
+      "hybrid+rerank": {
+        "queries": 33,
+        "mean_ms": 308.666745458278,
+        "p50_ms": 331.2426999909803,
+        "p95_ms": 383.4233000408858
+      }
+    },
+    "evidence_gate": [
+      {
+        "threshold": 0.4,
+        "answerable_pass_rate": 1.0,
+        "unanswerable_refused_rate": 0.6923076923076923
+      },
+      {
+        "threshold": 0.45,
+        "answerable_pass_rate": 0.9696969696969697,
+        "unanswerable_refused_rate": 0.8461538461538461
+      },
+      {
+        "threshold": 0.5,
+        "answerable_pass_rate": 0.8787878787878788,
+        "unanswerable_refused_rate": 0.8461538461538461
+      },
+      {
+        "threshold": 0.55,
+        "answerable_pass_rate": 0.8181818181818182,
+        "unanswerable_refused_rate": 0.9230769230769231
+      },
+      {
+        "threshold": 0.6,
+        "answerable_pass_rate": 0.6666666666666666,
+        "unanswerable_refused_rate": 1.0
+      },
+      {
+        "threshold": 0.65,
+        "answerable_pass_rate": 0.5454545454545454,
+        "unanswerable_refused_rate": 1.0
+      },
+      {
+        "similarity_range": {
+          "answerable_min": 0.43041563034057617,
+          "unanswerable_max": 0.5816282976644227
+        }
+      }
+    ],
+    "ask": {
+      "answerable": {
+        "questions": 33,
+        "answered_correctly": 23,
+        "answered_incorrectly": 4,
+        "wrongly_refused": 6,
+        "correct_rate": 0.696969696969697,
+        "problems": [
+          "a04: wrongly refused (insufficient_evidence)",
+          "a06: answered, contains expected facts=False, cites a relevant chunk=True",
+          "a08: wrongly refused (insufficient_evidence)",
+          "a13: wrongly refused (insufficient_evidence)",
+          "a14: wrongly refused (insufficient_evidence)",
+          "a16: answered, contains expected facts=False, cites a relevant chunk=True",
+          "a20: wrongly refused (insufficient_evidence)",
+          "a21: answered, contains expected facts=False, cites a relevant chunk=False",
+          "a22: wrongly refused (insufficient_evidence)",
+          "a23: answered, contains expected facts=True, cites a relevant chunk=False"
+        ]
+      },
+      "unanswerable": {
+        "questions": 13,
+        "refused": 12,
+        "answered_anyway": 1,
+        "refusal_rate": 0.9230769230769231,
+        "problems": [
+          "u11 (near_domain): answered: What APR does a personal loan carry?"
+        ]
+      }
+    },
+    "questions": {
+      "answerable": 33,
+      "unanswerable": 13
+    }
+  },
+  "held_out": {
+    "retrieval_all_versions": {
+      "questions": 45,
+      "hit_at_k": {
+        "1": 0.8666666666666667,
+        "3": 0.9555555555555556,
+        "5": 0.9777777777777777
+      },
+      "recall_at_k": {
+        "1": 0.8555555555555555,
+        "3": 0.9555555555555556,
+        "5": 0.9666666666666667
+      },
+      "ndcg_at_k": {
+        "1": 0.8666666666666667,
+        "3": 0.9212285757946709,
+        "5": 0.927096756296284
+      },
+      "mrr": 0.912962962962963,
+      "missed_at_max_k": [
+        "h44"
+      ]
+    },
+    "retrieval_current_policy": {
+      "questions": 45,
+      "hit_at_k": {
+        "1": 0.9111111111111111,
+        "3": 0.9555555555555556,
+        "5": 0.9777777777777777
+      },
+      "recall_at_k": {
+        "1": 0.8888888888888888,
+        "3": 0.9555555555555556,
+        "5": 0.9666666666666667
+      },
+      "ndcg_at_k": {
+        "1": 0.9111111111111111,
+        "3": 0.9391524334920648,
+        "5": 0.9450206139936779
+      },
+      "mrr": 0.9388888888888889,
+      "missed_at_max_k": [
+        "h44"
+      ]
+    },
+    "retrieval_modes": {
+      "semantic": {
+        "questions": 45,
+        "hit_at_k": {
+          "1": 0.9111111111111111,
+          "3": 0.9555555555555556,
+          "5": 0.9777777777777777
+        },
+        "recall_at_k": {
+          "1": 0.8888888888888888,
+          "3": 0.9555555555555556,
+          "5": 0.9666666666666667
+        },
+        "ndcg_at_k": {
+          "1": 0.9111111111111111,
+          "3": 0.9391524334920648,
+          "5": 0.9450206139936779
+        },
+        "mrr": 0.9388888888888889,
+        "missed_at_max_k": [
+          "h44"
+        ]
+      },
+      "lexical": {
+        "questions": 45,
+        "hit_at_k": {
+          "1": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "recall_at_k": {
+          "1": 0.9666666666666667,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "ndcg_at_k": {
+          "1": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "mrr": 1.0,
+        "missed_at_max_k": []
+      },
+      "hybrid": {
+        "questions": 45,
+        "hit_at_k": {
+          "1": 0.9777777777777777,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "recall_at_k": {
+          "1": 0.9444444444444444,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "ndcg_at_k": {
+          "1": 0.9777777777777777,
+          "3": 0.9917984389682546,
+          "5": 0.9917984389682546
+        },
+        "mrr": 0.9888888888888889,
+        "missed_at_max_k": []
+      },
+      "semantic+rerank": {
+        "questions": 45,
+        "hit_at_k": {
+          "1": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "recall_at_k": {
+          "1": 0.9666666666666667,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "ndcg_at_k": {
+          "1": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "mrr": 1.0,
+        "missed_at_max_k": []
+      },
+      "hybrid+rerank": {
+        "questions": 45,
+        "hit_at_k": {
+          "1": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "recall_at_k": {
+          "1": 0.9666666666666667,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "ndcg_at_k": {
+          "1": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "mrr": 1.0,
+        "missed_at_max_k": []
+      }
+    },
+    "latency": {
+      "semantic": {
+        "queries": 45,
+        "mean_ms": 7.26228222095718,
+        "p50_ms": 7.385100005194545,
+        "p95_ms": 8.771179988980293
+      },
+      "lexical": {
+        "queries": 45,
+        "mean_ms": 6.371228888423906,
+        "p50_ms": 6.306300056166947,
+        "p95_ms": 7.97320008277893
+      },
+      "hybrid": {
+        "queries": 45,
+        "mean_ms": 10.115008889180091,
+        "p50_ms": 10.132099967449903,
+        "p95_ms": 11.77751994691789
+      },
+      "semantic+rerank": {
+        "queries": 45,
+        "mean_ms": 342.02891554321263,
+        "p50_ms": 332.21459994092584,
+        "p95_ms": 467.80827997718006
+      },
+      "hybrid+rerank": {
+        "queries": 45,
+        "mean_ms": 317.96361555655795,
+        "p50_ms": 327.8523999033496,
+        "p95_ms": 384.3744599726051
+      }
+    },
+    "evidence_gate": [
+      {
+        "threshold": 0.4,
+        "answerable_pass_rate": 0.9555555555555556,
+        "unanswerable_refused_rate": 0.6875
+      },
+      {
+        "threshold": 0.45,
+        "answerable_pass_rate": 0.9111111111111111,
+        "unanswerable_refused_rate": 0.8125
+      },
+      {
+        "threshold": 0.5,
+        "answerable_pass_rate": 0.8444444444444444,
+        "unanswerable_refused_rate": 0.8125
+      },
+      {
+        "threshold": 0.55,
+        "answerable_pass_rate": 0.7111111111111111,
+        "unanswerable_refused_rate": 0.875
+      },
+      {
+        "threshold": 0.6,
+        "answerable_pass_rate": 0.5111111111111111,
+        "unanswerable_refused_rate": 0.9375
+      },
+      {
+        "threshold": 0.65,
+        "answerable_pass_rate": 0.37777777777777777,
+        "unanswerable_refused_rate": 0.9375
+      },
+      {
+        "similarity_range": {
+          "answerable_min": 0.18142186105251312,
+          "unanswerable_max": 0.7305248001374248
+        }
+      }
+    ],
+    "ask": {
+      "answerable": {
+        "questions": 45,
+        "answered_correctly": 28,
+        "answered_incorrectly": 4,
+        "wrongly_refused": 13,
+        "correct_rate": 0.6222222222222222,
+        "problems": [
+          "h02: answered, contains expected facts=False, cites a relevant chunk=True",
+          "h05: answered, contains expected facts=False, cites a relevant chunk=True",
+          "h08: wrongly refused (insufficient_evidence)",
+          "h09: wrongly refused (insufficient_evidence)",
+          "h15: wrongly refused (insufficient_evidence)",
+          "h22: wrongly refused (insufficient_evidence)",
+          "h25: wrongly refused (insufficient_evidence)",
+          "h29: wrongly refused (insufficient_evidence)",
+          "h31: wrongly refused (insufficient_evidence)",
+          "h33: wrongly refused (insufficient_evidence)",
+          "h35: answered, contains expected facts=False, cites a relevant chunk=True",
+          "h36: wrongly refused (insufficient_evidence)",
+          "h40: wrongly refused (insufficient_evidence)",
+          "h41: answered, contains expected facts=False, cites a relevant chunk=True",
+          "h43: wrongly refused (insufficient_evidence)",
+          "h44: wrongly refused (insufficient_evidence)",
+          "h45: wrongly refused (insufficient_evidence)"
+        ]
+      },
+      "unanswerable": {
+        "questions": 16,
+        "refused": 14,
+        "answered_anyway": 2,
+        "refusal_rate": 0.875,
+        "problems": [
+          "x06 (near_domain): answered: What is the maximum loan amount for an auto loan?",
+          "x08 (near_domain): answered: What is the interest rate on a 36-month loan?"
+        ]
+      }
+    },
+    "questions": {
+      "answerable": 45,
+      "unanswerable": 16
+    }
   }
 }

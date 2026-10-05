@@ -34,8 +34,8 @@ Demonstrates real vector storage, semantic retrieval, grounded answer/refusal lo
 | Ingestion | Markdown with front matter → normalise → section-aware chunking → embed → store. Idempotent (see below) |
 | RAG | LangGraph state machine: `validate_query → retrieve → assess_evidence → generate_answer \| refuse → validate_citations` |
 | Generation | `extractive` (default, no LLM): quotes the best-matching sentences. Optional `openai_compatible` client for a chat model you configure |
-| Evaluation | 33 answerable + 13 unanswerable gold questions; Hit@K, Recall@K, MRR, gate sweep, end-to-end behaviour |
-| Tests | 195 (88 unit, 107 integration against real PostgreSQL + pgvector) |
+| Evaluation | Separate tuning (33 + 13) and held-out (45 + 16) question sets; Hit@K, Recall@K, nDCG@K, MRR, per-configuration latency, gate sweep, end-to-end behaviour; CI floors on both |
+| Tests | 218 (97 unit, 121 integration against real PostgreSQL + pgvector) |
 | CI | ruff, mypy, unit + integration tests with a pgvector service container, pip-audit, bandit, Docker Compose smoke test |
 
 Only LangGraph is used from the LangChain ecosystem; there is no other LangChain code in the app.
@@ -107,62 +107,94 @@ Without `TEST_DATABASE_URL`, integration tests are skipped. They drop and recrea
 
 ## Measured results
 
-From `python -m scripts.evaluate_retrieval` on this repository's sample data: 7 documents, 34 chunks, MiniLM-L6-v2 (384 dims), pgvector 0.8.7, extractive generator, threshold 0.55. Raw numbers are in [`eval/results.json`](eval/results.json), questions in [`eval/gold.json`](eval/gold.json).
+From `python -m scripts.evaluate_retrieval` on this repository's sample data: 7 synthetic documents, 34 chunks, MiniLM-L6-v2 (384 dims), pgvector 0.8.7, extractive generator, evidence threshold 0.55. Raw numbers: [`eval/results.json`](eval/results.json). The protocol, including what each set may and may not be used for, is in [`eval/README.md`](eval/README.md).
 
-**Retrieval** (33 answerable questions; a hit is a top-K chunk whose document, version and section match the gold section):
+Two question sets are kept apart:
 
-| | Hit@1 | Hit@3 | Hit@5 | MRR |
-|---|---|---|---|---|
-| No status filter (superseded policy can match) | 87.9% | 93.9% | 100.0% | 0.924 |
-| `status=current` (what `/api/ask` uses) | 90.9% | 93.9% | 100.0% | 0.939 |
+- **Tuning set** (33 answerable + 13 unanswerable questions): used while building the system. The evidence threshold, the extractive sentence ranking and the default retrieval mode were chosen while looking at it.
+- **Held-out set** (45 answerable + 16 unanswerable questions): written after the pipeline was fixed and **not used to choose any setting**. It is the number to trust more. It is still small, written by the same person who built the system, and drawn from the same seven documents.
 
-Recall@K equals Hit@K here because each question has exactly one relevant section.
+### Retrieval, held-out set (45 answerable questions, `status=current`)
 
-**Retrieval modes** (same 33 questions, `status=current`):
+| Configuration | Hit@1 | Hit@3 | Hit@5 | Recall@1 | Recall@3 | Recall@5 | nDCG@1 | nDCG@3 | nDCG@5 | MRR |
+|---|---|---|---|---|---|---|---|---|---|---|
+| semantic (default) | 91.1% | 95.6% | 97.8% | 88.9% | 95.6% | 96.7% | 0.911 | 0.939 | 0.945 | 0.939 |
+| lexical | 100.0% | 100.0% | 100.0% | 96.7% | 100.0% | 100.0% | 1.000 | 1.000 | 1.000 | 1.000 |
+| hybrid | 97.8% | 100.0% | 100.0% | 94.4% | 100.0% | 100.0% | 0.978 | 0.992 | 0.992 | 0.989 |
+| semantic+rerank | 100.0% | 100.0% | 100.0% | 96.7% | 100.0% | 100.0% | 1.000 | 1.000 | 1.000 | 1.000 |
+| hybrid+rerank | 100.0% | 100.0% | 100.0% | 96.7% | 100.0% | 100.0% | 1.000 | 1.000 | 1.000 | 1.000 |
 
-| Mode | Hit@1 | Hit@3 | Hit@5 | MRR |
-|---|---|---|---|---|
-| semantic (default) | 90.9% | 93.9% | 100.0% | 0.939 |
-| lexical | 84.8% | 97.0% | 100.0% | 0.907 |
-| hybrid (RRF) | 84.8% | 97.0% | 100.0% | 0.912 |
+### Retrieval, tuning set (33 answerable questions, `status=current`)
 
-Reranking the candidates with the cross-encoder (`RERANK_CANDIDATES=20`) on the same questions:
+| Configuration | Hit@1 | Hit@3 | Hit@5 | Recall@1 | Recall@3 | Recall@5 | nDCG@1 | nDCG@3 | nDCG@5 | MRR |
+|---|---|---|---|---|---|---|---|---|---|---|
+| semantic (default) | 90.9% | 93.9% | 100.0% | 90.9% | 93.9% | 100.0% | 0.909 | 0.928 | 0.954 | 0.939 |
+| lexical | 84.8% | 97.0% | 100.0% | 84.8% | 97.0% | 100.0% | 0.848 | 0.917 | 0.930 | 0.907 |
+| hybrid | 84.8% | 97.0% | 100.0% | 84.8% | 97.0% | 100.0% | 0.848 | 0.921 | 0.934 | 0.912 |
+| semantic+rerank | 97.0% | 97.0% | 100.0% | 97.0% | 97.0% | 100.0% | 0.970 | 0.970 | 0.983 | 0.977 |
+| hybrid+rerank | 97.0% | 97.0% | 100.0% | 97.0% | 97.0% | 100.0% | 0.970 | 0.970 | 0.983 | 0.977 |
 
-| Mode | Hit@1 | Hit@3 | Hit@5 | MRR |
-|---|---|---|---|---|
-| semantic + rerank | 97.0% | 97.0% | 100.0% | 0.977 |
-| hybrid + rerank | 97.0% | 97.0% | 100.0% | 0.977 |
+Recall@K is below Hit@K on the held-out set only because three of its questions need two sections.
 
-Reranking improved Hit@1 and MRR here. Treat that carefully: the set is in-sample, and with only 34 chunks a 20-candidate depth lets the cross-encoder see more than half the corpus, so it says little about large corpora. Reranking therefore stays **off by default** until it is compared on a held-out set, and it adds a second model plus per-query latency that has not been measured.
+### What the two sets say, and what was decided
 
-Hybrid did **not** beat semantic-only on this set: it found the right chunk more often in the top 3 but ranked it first less often, so MRR is lower. Because it is not at least as good, `semantic` stays the default and `hybrid` is optional. This set has few exact-term questions and is in-sample, so it says little about corpora where identifiers matter.
+- **On the tuning set, semantic search led the unreranked modes** (MRR 0.939 vs 0.912 hybrid and 0.907 lexical), so `semantic` is the default.
+- **On the held-out set the order reversed:** lexical (1.000) and hybrid (0.989) beat semantic (0.939). The held-out set has more short, specific-term questions (for example "adverse action notice"), which is where full-text matching helps. This is a hypothesis for the next evaluation round, not a reason to change the default now: under the protocol the held-out set cannot be used to choose a retrieval mode, and with 45 questions the gap is a handful of questions.
+- **Cross-encoder reranking helped on both sets** (held-out MRR 1.000, tuning 0.977) but it stays **off by default**: it adds roughly 300 ms per search on this CPU (below), which fails the 250 ms criterion fixed before the held-out run.
+- With only 34 chunks, a 20-candidate rerank depth covers over half the corpus, and held-out scores near 1.000 leave no headroom to see differences. Neither says much about a large corpus.
 
-**Evidence gate** (top-1 similarity under current policy):
+### Latency (held-out run, milliseconds per search, this machine)
 
-| Threshold | Answerable questions passing | Unanswerable questions refused |
+| Configuration | mean | p50 | p95 |
+|---|---|---|---|
+| semantic | 7 | 7 | 9 |
+| lexical | 6 | 6 | 8 |
+| hybrid | 10 | 10 | 12 |
+| semantic+rerank | 342 | 332 | 468 |
+| hybrid+rerank | 318 | 328 | 384 |
+
+One process, a handful of queries, a CPU, a 34-chunk corpus. Indicative of the *relative* cost of the cross-encoder, not a benchmark and not a production number.
+
+### Evidence gate and answering
+
+Gate sweep on the **held-out** set (top-1 cosine similarity, `status=current`):
+
+| Threshold | Answerable passing | Unanswerable refused |
 |---|---|---|
-| 0.45 | 97.0% | 84.6% |
-| 0.50 | 87.9% | 84.6% |
-| **0.55 (default)** | 81.8% | 92.3% |
-| 0.60 | 66.7% | 100.0% |
+| 0.45 | 91.1% | 81.2% |
+| 0.50 | 84.4% | 81.2% |
+| **0.55 (default)** | 71.1% | 87.5% |
+| 0.60 | 51.1% | 93.8% |
 
-The two score ranges overlap (lowest answerable top-1 similarity 0.430, highest unanswerable 0.582), so no threshold separates them perfectly. The default favours refusing over answering.
+Lowest answerable top-1 similarity 0.181; highest unanswerable 0.731. The ranges overlap heavily, so no single threshold separates them. The tuning set looked better (0.430 / 0.582) because the threshold was chosen on it.
 
-**End to end** (`/api/ask` logic): 23 of 33 answerable questions were answered correctly with a relevant citation; 6 were wrongly refused by the gate; 4 were answered with the wrong sentence or source. 12 of 13 unanswerable questions were refused. The one answered was *"What APR does a personal loan carry?"*, which sits close to the fee schedule's mention of APR.
+End to end (`/api/ask` logic, default settings):
 
-Read these numbers with care:
-- **They are in-sample.** The threshold and the extractive sentence ranking were chosen while looking at this same question set, so they are optimistic. There is no held-out set.
-- **The corpus is tiny and synthetic** (34 chunks). High Hit@5 on 34 chunks says little about large corpora.
-- **The answer check is a strict substring match.** One of the "incorrect" answers (prepayment) is a reasonable answer scored wrong because it says "without additional charges" rather than "no prepayment penalty".
-- No latency or throughput benchmarks were run, and none are claimed.
+| | Tuning | Held-out |
+|---|---|---|
+| Answerable answered correctly with a relevant citation | 23/33 | 28/45 |
+| Answerable wrongly refused by the gate | 6 | 13 |
+| Answerable answered with a wrong sentence or source | 4 | 4 |
+| Unanswerable refused | 12/13 | 14/16 |
+
+The gate is the weakest part: on held-out questions it refused 13 of 45 answerable ones, and it answered 2 unanswerable near-domain questions (an auto-loan limit and a 36-month interest rate, both topics the documents touch without answering). A better gate would need more than a single similarity threshold, and was not attempted here.
+
+### Reading these numbers
+
+- The held-out set is separate from the tuning set but small (n = 45) and written by the author of the system.
+- The corpus is tiny and synthetic. High Hit@5 on 34 chunks says little about large corpora.
+- The answer check is a strict substring match, so a reasonable answer phrased differently can be scored wrong.
+- Latency figures are single-machine and indicative only. No throughput benchmark was run.
+- CI enforces floors below these measured values on both sets (`tests/integration/test_evaluation_regression.py`). They are regression guards, not quality claims.
 
 ## Scope and limitations
 
 - Synthetic documents only, English only, markdown input only (no PDF/HTML parsing).
 - With 34 rows PostgreSQL normally picks an exact scan over the HNSW index. The tests prove the query shape can use the index (`enable_seqscan=off` plus an iterative-scan test), not that the index speeds up this tiny corpus.
-- One embedding model. Hybrid search and cross-encoder reranking exist but are optional and off by default: hybrid did not beat semantic-only on the in-sample set, and reranking has not yet been evaluated on held-out data. No latency has been measured for either.
+- One embedding model. Hybrid search and cross-encoder reranking are optional and off by default: the defaults were chosen on the tuning set, where hybrid lost and reranking cost too much latency, while the held-out set favoured lexical/hybrid/reranked retrieval. That mismatch is documented, not tuned away, and needs a new held-out set to resolve.
 - The default answer generator is extractive, not an LLM. The optional LLM client is untested against a live endpoint.
 - The API has no authentication, rate limiting or multi-tenancy. The Compose file uses local-only demo credentials (`policy_rag_local_only`); they are not secrets.
+- The held-out set is small and written by the system's author; it is not an independent benchmark.
 - Not production-ready. It is a portfolio project that demonstrates the retrieval design, the evidence gate and its evaluation.
 
 ## Configuration
