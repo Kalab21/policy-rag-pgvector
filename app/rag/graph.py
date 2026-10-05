@@ -9,15 +9,22 @@
 Retrieval (app.retrieval) knows nothing about this graph; the graph only calls it.
 """
 
+import time
 from collections.abc import Mapping
 from typing import Any, Literal, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
 from app.models.domain import RetrievedChunk
+from app.observability.telemetry import current, set_attributes, span
 from app.rag.citations import validate_citations
 from app.rag.evidence import EvidenceAssessment, assess_evidence
-from app.rag.generator import NOT_ENOUGH_MARKER, AnswerGenerator, GeneratorOutputError
+from app.rag.generator import (
+    NOT_ENOUGH_MARKER,
+    AnswerGenerator,
+    GenerationError,
+    GeneratorOutputError,
+)
 from app.retrieval.service import RetrievalService
 
 REFUSAL_MESSAGE = (
@@ -64,18 +71,58 @@ def build_graph(
         return {"retrieved": chunks}
 
     def assess(state: RagState) -> RagState:
-        evidence, context = assess_evidence(state["retrieved"], min_similarity, max_context_chunks)
+        with span("evidence.assess", {"threshold": min_similarity}) as sp:
+            evidence, context = assess_evidence(
+                state["retrieved"], min_similarity, max_context_chunks
+            )
+            set_attributes(
+                sp,
+                {
+                    "evidence.status": evidence.status,
+                    "best_similarity": evidence.best_similarity,
+                    "chunks.considered": evidence.chunks_considered,
+                    "chunks.used": evidence.chunks_used,
+                },
+            )
         return {"evidence": evidence, "context": context}
 
     def route(state: RagState) -> Literal["generate_answer", "refuse"]:
         return "generate_answer" if state["evidence"].status == "sufficient" else "refuse"
 
     def generate_answer(state: RagState) -> RagState:
+        telemetry = current()
+        provider = generator.name.split(":")[0]
+        started = time.perf_counter()
         try:
-            answer = generator.generate(state["query"], state["context"])
-        except GeneratorOutputError:
-            # The model answered but its output failed validation: fail closed.
-            return {"answer": "", "status": "answered", "generation_failed": True}
+            with span(
+                "generator.generate",
+                {
+                    "generator.name": generator.name,
+                    "provider": provider,
+                    "chunks": len(state["context"]),
+                },
+            ) as sp:
+                try:
+                    answer = generator.generate(state["query"], state["context"])
+                except GeneratorOutputError:
+                    # The model answered but its output failed validation: fail closed.
+                    set_attributes(sp, {"output.valid": False})
+                    telemetry.record(
+                        "provider_errors", 1, {"provider": provider, "error_type": "invalid_output"}
+                    )
+                    return {"answer": "", "status": "answered", "generation_failed": True}
+                except GenerationError as exc:
+                    telemetry.record(
+                        "provider_errors",
+                        1,
+                        {"provider": provider, "error_type": type(exc).__name__},
+                    )
+                    raise
+                set_attributes(sp, {"output.valid": True})
+        finally:
+            telemetry.record(
+                "generation_ms", (time.perf_counter() - started) * 1000, {"provider": provider}
+            )
         return {"answer": answer, "status": "answered"}
 
     def refuse(state: RagState) -> RagState:
@@ -87,6 +134,21 @@ def build_graph(
         }
 
     def check_citations(state: RagState) -> RagState:
+        with span("citation.validate") as sp:
+            result = _check_citations(state)
+            outcome = result.get("status", state.get("status"))
+            set_attributes(
+                sp,
+                {
+                    "outcome": outcome,
+                    "cited": len(result.get("cited", state.get("cited", []))),
+                    "invalid": len(result.get("invalid_citations", [])),
+                    "refusal_reason": result.get("refusal_reason", state.get("refusal_reason")),
+                },
+            )
+            return result
+
+    def _check_citations(state: RagState) -> RagState:
         if state["status"] == "refused":
             return {}
         answer = state.get("answer", "")

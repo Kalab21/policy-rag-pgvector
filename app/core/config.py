@@ -71,6 +71,18 @@ class Settings(BaseSettings):
     bedrock_timeout_s: float = Field(default=30.0, gt=0, le=300)
     bedrock_max_retries: int = Field(default=2, ge=0, le=5)
 
+    # Observability. Spans and metrics are created in-process; nothing leaves the process
+    # unless OTEL_EXPORTER_OTLP_ENDPOINT is set. Prometheus text is served at /metrics.
+    telemetry_enabled: bool = True
+    metrics_enabled: bool = True
+    otel_service_name: str = "policy-rag-platform"
+    otel_exporter_otlp_endpoint: str | None = None
+    # Off by default: the user's question may be sensitive. When on, a 120-character preview is
+    # added to traces; the full question is never recorded.
+    record_query_text: bool = False
+    log_format: Literal["json", "text"] = "json"
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+
     # Deadline for one MCP tool call (seconds).
     mcp_tool_timeout_s: float = Field(default=30.0, gt=0, le=300)
 

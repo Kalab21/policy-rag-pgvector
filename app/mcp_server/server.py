@@ -28,6 +28,8 @@ from app.mcp_server.tools import (
     VersionText,
 )
 from app.models.schemas import AskResponse, SearchFilters, SearchResponse
+from app.observability.logs import log_event
+from app.observability.telemetry import current, set_attributes, span
 from app.rag.generator import GenerationError
 from app.retrieval.store import InvalidFilterError
 
@@ -52,17 +54,35 @@ def build_server(tools: PolicyTools, timeout_s: float = 30.0) -> MCPServer:
         ),
     )
 
-    async def run(work: Callable[[], T]) -> T:
-        """Run blocking service code off the event loop, with a deadline and safe errors."""
-        try:
-            with anyio.fail_after(timeout_s):
-                return await anyio.to_thread.run_sync(work, abandon_on_cancel=True)
-        except TimeoutError:
-            raise ToolError("the request timed out") from None
-        except (ToolInputError, InvalidFilterError, ValueError) as exc:
-            raise ToolError(str(exc)) from None
-        except (GenerationError, httpx.HTTPError):
-            raise ToolError("the answer generator is unavailable") from None
+    async def run(tool: str, work: Callable[[], T]) -> T:
+        """Run blocking service code off the event loop, with a deadline, a span, metrics and
+        safe errors."""
+        telemetry = current()
+        with span("mcp.tool", {"tool.name": tool}) as sp:
+            try:
+                with anyio.fail_after(timeout_s):
+                    result = await anyio.to_thread.run_sync(work, abandon_on_cancel=True)
+            except TimeoutError:
+                failure, safe = "timeout", "the request timed out"
+            except (ToolInputError, InvalidFilterError, ValueError) as exc:
+                failure, safe = "invalid_request", str(exc)
+            except (GenerationError, httpx.HTTPError):
+                failure, safe = "generator_unavailable", "the answer generator is unavailable"
+            except Exception as exc:
+                telemetry.record(
+                    "mcp_failures", 1, {"tool": tool, "error_type": type(exc).__name__}
+                )
+                telemetry.record("mcp_calls", 1, {"tool": tool, "outcome": "error"})
+                raise  # the SDK masks unexpected errors from the caller
+            else:
+                telemetry.record("mcp_calls", 1, {"tool": tool, "outcome": "ok"})
+                set_attributes(sp, {"outcome": "ok"})
+                return result
+            set_attributes(sp, {"outcome": "error", "error.kind": failure})
+            telemetry.record("mcp_failures", 1, {"tool": tool, "error_type": failure})
+            telemetry.record("mcp_calls", 1, {"tool": tool, "outcome": "error"})
+            log_event("mcp.tool.failed", level=30, tool=tool, error_kind=failure)
+            raise ToolError(safe) from None
 
     @server.tool(
         name="search_policy",
@@ -79,7 +99,7 @@ def build_server(tools: PolicyTools, timeout_s: float = 30.0) -> MCPServer:
         filters: SearchFilters | None = None,
         mode: RetrievalModeName | None = None,
     ) -> SearchResponse:
-        return await run(lambda: tools.search_policy(query, top_k, filters, mode))
+        return await run("search_policy", lambda: tools.search_policy(query, top_k, filters, mode))
 
     @server.tool(
         name="get_policy_document",
@@ -92,7 +112,9 @@ def build_server(tools: PolicyTools, timeout_s: float = 30.0) -> MCPServer:
     async def get_policy_document(
         document: DocumentName, version: VersionText | None = None
     ) -> DocumentContent:
-        return await run(lambda: tools.get_policy_document(document, version))
+        return await run(
+            "get_policy_document", lambda: tools.get_policy_document(document, version)
+        )
 
     @server.tool(
         name="ask_policy",
@@ -104,6 +126,6 @@ def build_server(tools: PolicyTools, timeout_s: float = 30.0) -> MCPServer:
         annotations=READ_ONLY,
     )
     async def ask_policy(question: QueryText, filters: SearchFilters | None = None) -> AskResponse:
-        return await run(lambda: tools.ask_policy(question, filters))
+        return await run("ask_policy", lambda: tools.ask_policy(question, filters))
 
     return server

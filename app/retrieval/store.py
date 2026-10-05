@@ -9,6 +9,7 @@ from psycopg.types.json import Jsonb
 
 from app.db.pool import DictPool
 from app.models.domain import RetrievedChunk
+from app.observability.telemetry import set_attributes, span
 from app.retrieval.fusion import DEFAULT_RRF_K, rrf_fuse
 
 # Metadata keys a caller may filter on. Keys are checked against this list because they
@@ -93,12 +94,17 @@ def search_chunks(
         "filter": Jsonb(clean),
     }
 
-    with pool.connection() as conn, conn.transaction():
+    with (
+        span("retrieval.semantic", {"top_k": top_k, "filters.count": len(clean)}) as sp,
+        pool.connection() as conn,
+        conn.transaction(),
+    ):
         # Transaction-local settings, so they never leak to other users of the connection.
         conn.execute("SELECT set_config('hnsw.ef_search', %s, true)", (str(max(ef_search, top_k)),))
         if iterative_scan:
             conn.execute("SELECT set_config('hnsw.iterative_scan', 'strict_order', true)")
         rows = conn.execute(sql, params).fetchall()
+        set_attributes(sp, {"returned": len(rows)})
 
     return [_to_chunk(row) for row in rows]
 
@@ -137,8 +143,12 @@ def search_lexical(
         "k": top_k,
         "filter": Jsonb(clean),
     }
-    with pool.connection() as conn:
+    with (
+        span("retrieval.lexical", {"top_k": top_k, "filters.count": len(clean)}) as sp,
+        pool.connection() as conn,
+    ):
         rows = conn.execute(sql, params).fetchall()
+        set_attributes(sp, {"returned": len(rows)})
     return [replace(_to_chunk(r), score=float(r["rank"]), matched_by=("lexical",)) for r in rows]
 
 
@@ -161,6 +171,12 @@ def search_hybrid(
     if top_k < 1:
         raise ValueError("top_k must be at least 1")
     depth = max(candidates, top_k)
-    semantic = search_chunks(pool, query_vector, depth, filters, ef_search, iterative_scan)
-    lexical = search_lexical(pool, query_text, query_vector, depth, filters)
-    return rrf_fuse({"semantic": semantic, "lexical": lexical}, rrf_k)[:top_k]
+    with span("retrieval.hybrid", {"top_k": top_k, "candidates": depth, "rrf_k": rrf_k}) as sp:
+        semantic = search_chunks(pool, query_vector, depth, filters, ef_search, iterative_scan)
+        lexical = search_lexical(pool, query_text, query_vector, depth, filters)
+        with span(
+            "retrieval.fusion", {"semantic.count": len(semantic), "lexical.count": len(lexical)}
+        ):
+            fused = rrf_fuse({"semantic": semantic, "lexical": lexical}, rrf_k)[:top_k]
+        set_attributes(sp, {"returned": len(fused)})
+        return fused
