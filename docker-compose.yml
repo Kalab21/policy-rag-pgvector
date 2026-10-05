@@ -18,11 +18,28 @@ services:
       retries: 10
 
   api:
-    build: .
+    build:
+      context: .
+      args:
+        # The image downloads this model at build time, so build and runtime must agree.
+        EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-policy_rag}:${POSTGRES_PASSWORD:-policy_rag_local_only}@db:5432/${POSTGRES_DB:-policy_rag}
+      # Defaults below match app/core/config.py.
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
       EMBEDDING_DIM: ${EMBEDDING_DIM:-384}
+      CHUNK_SIZE: ${CHUNK_SIZE:-700}
+      CHUNK_OVERLAP: ${CHUNK_OVERLAP:-120}
+      HNSW_M: ${HNSW_M:-16}
+      HNSW_EF_CONSTRUCTION: ${HNSW_EF_CONSTRUCTION:-64}
+      HNSW_EF_SEARCH: ${HNSW_EF_SEARCH:-40}
+      EVIDENCE_MIN_SIMILARITY: ${EVIDENCE_MIN_SIMILARITY:-0.55}
+      RAG_MAX_CONTEXT_CHUNKS: ${RAG_MAX_CONTEXT_CHUNKS:-4}
+      LLM_PROVIDER: ${LLM_PROVIDER:-extractive}
+      # Optional, used only when LLM_PROVIDER=openai_compatible. Empty means unset.
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
     ports:
       - "8000:8000"
     depends_on:

@@ -12,6 +12,10 @@ Query ─► Embedding ─► pgvector HNSW ─► Top-K ─► Evidence gate �
                                                    └──► Refuse (no sources, reason returned)
 ```
 
+Demonstrates real vector storage, semantic retrieval, grounded answer/refusal logic, and retrieval evaluation using PostgreSQL + pgvector.
+
+**Stack:** Python · FastAPI · PostgreSQL · pgvector (HNSW, cosine similarity) · embeddings · metadata filtering · LangGraph · evidence gating · citation validation · retrieval evaluation · Docker · GitHub Actions · Pytest
+
 ## What is implemented
 
 | Area | Implementation |
@@ -21,7 +25,7 @@ Query ─► Embedding ─► pgvector HNSW ─► Top-K ─► Evidence gate �
 | Index | HNSW, `vector_cosine_ops`, `m=16`, `ef_construction=64`; `hnsw.ef_search=40` per query |
 | Similarity | Cosine distance (`<=>`); similarity = 1 − distance |
 | Metadata filtering | In the same SQL statement: `metadata @> filter` (JSONB, GIN-indexed) on `category`, `version`, `status`, `document`, `section` |
-| Filtered ANN | pgvector ≥ 0.8 iterative scan (`hnsw.iterative_scan = strict_order`) so a selective filter still returns `top_k` rows |
+| Filtered ANN | pgvector ≥ 0.8 iterative scan (`hnsw.iterative_scan = strict_order`) lets HNSW keep scanning for matching rows after the filter, which helps fill `top_k` when at least `top_k` matching rows exist |
 | Embeddings | `sentence-transformers/all-MiniLM-L6-v2` via [fastembed](https://github.com/qdrant/fastembed) (ONNX, runs locally on CPU), behind an `EmbeddingProvider` interface. Model name, dimension and a content hash are stored per document |
 | Ingestion | Markdown with front matter → normalise → section-aware chunking → embed → store. Idempotent (see below) |
 | RAG | LangGraph state machine: `validate_query → retrieve → assess_evidence → generate_answer \| refuse → validate_citations` |
@@ -136,7 +140,23 @@ Read these numbers with care:
 
 ## Configuration
 
-Environment variables (see [`.env.example`](.env.example)): `DATABASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIM`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, `EVIDENCE_MIN_SIMILARITY`, `RAG_MAX_CONTEXT_CHUNKS`, `LLM_PROVIDER` (`extractive` | `openai_compatible`), `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`, `HNSW_M`, `HNSW_EF_CONSTRUCTION`, `HNSW_EF_SEARCH`. Changing the embedding model to one with a different width requires recreating the `chunks` table.
+Copy [`.env.example`](.env.example) to `.env` to override anything; every value in it is the application default. Docker Compose forwards these to the API container:
+
+| Group | Variables |
+|---|---|
+| PostgreSQL | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST_PORT` (Compose builds `DATABASE_URL` from them) |
+| Embeddings | `EMBEDDING_MODEL` (also a build argument, because the image downloads the model at build time), `EMBEDDING_DIM` |
+| Chunking | `CHUNK_SIZE`, `CHUNK_OVERLAP` |
+| Retrieval | `HNSW_M`, `HNSW_EF_CONSTRUCTION`, `HNSW_EF_SEARCH` |
+| Evidence gate / RAG | `EVIDENCE_MIN_SIMILARITY`, `RAG_MAX_CONTEXT_CHUNKS` |
+| Optional LLM | `LLM_PROVIDER` (`extractive` default, or `openai_compatible`), `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` |
+
+Settings that exist in the application but are deliberately not forwarded by Compose: `DATABASE_URL` (derived from the `POSTGRES_*` values), `EMBEDDING_PROVIDER` (only `fastembed` is implemented), `SAMPLE_DATA_DIR`, `AUTO_INIT_SCHEMA`, `DB_POOL_MIN_SIZE`, `DB_POOL_MAX_SIZE` and `LLM_TIMEOUT_S`. They work when running the app directly, not through Compose.
+
+Notes:
+- Changing `EMBEDDING_MODEL` needs `docker compose up --build`. If the new model has a different vector width, also set `EMBEDDING_DIM` and recreate the `chunks` table (for example `docker compose down -v`), because the API refuses to start when the column width and `EMBEDDING_DIM` disagree.
+- `HNSW_M` and `HNSW_EF_CONSTRUCTION` only apply when the index is created; `HNSW_EF_SEARCH` applies to every query.
+- Inside a container `localhost` is the container itself, so point `LLM_BASE_URL` at a reachable host (for example `http://host.docker.internal:11434/v1`).
 
 ## Layout
 
