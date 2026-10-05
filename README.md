@@ -37,7 +37,8 @@ Demonstrates real vector storage, semantic retrieval, grounded answer/refusal lo
 | Evaluation | Separate tuning (33 + 13) and held-out (45 + 16) question sets; Hit@K, Recall@K, nDCG@K, MRR, per-configuration latency, gate sweep, end-to-end behaviour; CI floors on both |
 | MCP | A read-only Model Context Protocol server (stdio) with three bounded tools: `search_policy`, `get_policy_document`, `ask_policy` |
 | Observability | OpenTelemetry spans for each pipeline stage, Prometheus metrics at `/metrics`, structured JSON logs with request ids, optional OTLP export |
-| Tests | 379 (200 unit, 179 integration against real PostgreSQL + pgvector) |
+| Security | JWT validation (OIDC/JWKS, PEM key, or demo shared secret), roles, and document-level authorization enforced inside the retrieval SQL (tenant, access level, department); the HTTP API and the MCP server obey the same scope |
+| Tests | 483 (266 unit, 217 integration against real PostgreSQL + pgvector) |
 | CI | ruff, mypy, unit + integration tests with a pgvector service container, pip-audit, bandit, Docker Compose smoke test |
 
 Only LangGraph is used from the LangChain ecosystem; there is no other LangChain code in the app.
@@ -89,6 +90,27 @@ Point an MCP client at that command. It exposes exactly three read-only tools th
 | `ask_policy` | `question`, optional `filters` | a cited answer, or a refusal when the evidence is insufficient |
 
 The tools take typed, length-limited arguments (a document name must match `[a-z0-9-]`, so paths and SQL are rejected before any code runs), have no SQL, filesystem, shell or network access, and are annotated read-only. Failures come back as MCP tool errors with a safe message; unexpected exceptions are masked; each call has a deadline (`MCP_TOOL_TIMEOUT_S`). The server can be started with fixed metadata filters that a caller can narrow but never change, which is the hook the planned authorization layer will use. It runs over stdio only, deliberately: a network-reachable tool server would need authentication, which this project does not have yet.
+
+### Security: authentication and document authorization
+
+Off by default (`AUTH_MODE=off` is a local demo mode: no login, every document readable, and `/api/me` says so). With `AUTH_MODE=jwt` the API and the MCP server validate a bearer token and limit everything to what it allows.
+
+**Who may read what.** Every document (and each of its chunks) is labelled with a `tenant_id`, an `access_level` (`public` < `internal` < `restricted` < `confidential`) and a `department`, set in the document's front matter (unlabelled documents are `internal` in the `default` tenant). A token's roles set the highest level its holder may read: `employee` internal, `underwriter` and `compliance` restricted, `admin` confidential. Public and internal documents are open to the whole tenant; restricted and confidential ones also require the holder's department to match (admins belong to every department). Other tenants' documents are never readable, and a chunk with missing labels is treated as unreadable.
+
+**Where it is enforced.** The scope is built only from the validated token and turned into a SQL predicate that is ANDed into the semantic, lexical and hybrid queries, the document listing and the document reader. Restricted chunks are therefore never fetched, so they cannot be ranked, reranked, scored by the evidence gate, handed to a generator, put in a response, or written to a trace or log. Caller metadata filters are a separate, additional condition: they can narrow results but cannot widen the scope, `tenant_id` and the other authorization fields are not accepted as filters, and nothing in the request (query string, headers, body) can name a tenant.
+
+**Token validation.** Signature, issuer, audience, subject and expiry are required, with a small clock leeway. The algorithm allowlist comes from the configured key source, not from the token: a JWKS URL or PEM public key accepts only RS256/ES256, a shared secret (at least 32 characters, local demos only) only HS256, so `alg: none` and HS/RS key-confusion tokens are rejected. Missing or invalid tokens get `401`; a valid token with no recognised role gets `403`. Roles in a token that this project does not define are ignored. Misconfiguration (no key source, a short secret, missing issuer or audience) stops the server at startup rather than running it open.
+
+**MCP.** `python -m app.mcp_server` with `AUTH_MODE=jwt` refuses to start without a valid `MCP_ACCESS_TOKEN` in its environment, and then every tool call is limited by that token's scope.
+
+**Local demo tokens.** `python -m scripts.make_demo_token --role underwriter --department underwriting` mints a short-lived HS256 token from `AUTH_JWT_SECRET`, for demos and tests only. This project does not issue tokens or run an identity provider.
+
+```bash
+export AUTH_MODE=jwt AUTH_ISSUER=demo AUTH_AUDIENCE=policy-rag AUTH_JWT_SECRET="$(openssl rand -hex 32)"
+docker compose up -d --build && docker compose exec -T api python -m scripts.ingest
+TOKEN=$(docker compose exec -T api python -m scripts.make_demo_token --role employee 2>/dev/null)
+curl -s localhost:8000/api/me -H "Authorization: Bearer $TOKEN"
+```
 
 ### Observability
 
@@ -227,8 +249,9 @@ The gate is the weakest part: on held-out questions it refused 13 of 45 answerab
 - One embedding model. Hybrid search and cross-encoder reranking are optional and off by default: the defaults were chosen on the tuning set, where hybrid lost and reranking cost too much latency, while the held-out set favoured lexical/hybrid/reranked retrieval. That mismatch is documented, not tuned away, and needs a new held-out set to resolve.
 - The default answer generator is extractive, not an LLM. The optional OpenAI-compatible and Bedrock generators have not been run against a live model, so no live-LLM behaviour or quality is claimed.
 - Observability is instrumented and tested but has not been run against a real collector, tracing backend or dashboard, and `/metrics` is unauthenticated. No load test was run.
-- The MCP server is a tool interface for clients that launch it locally; it has no authentication of its own and is not an agent: no LLM decides which tool to call here, and nothing in this project is multi-agent. It was exercised with an MCP client library in tests, not with a specific AI assistant product.
-- The API has no authentication, rate limiting or multi-tenancy. The Compose file uses local-only demo credentials (`policy_rag_local_only`); they are not secrets.
+- The MCP server is a tool interface for clients that launch it locally; with `AUTH_MODE=off` it applies no access control (with `jwt` it requires a valid token at startup) and it is not an agent: no LLM decides which tool to call here, and nothing in this project is multi-agent. It was exercised with an MCP client library in tests, not with a specific AI assistant product.
+- Authentication is optional and off by default; with it off the API has no access control at all. There is no rate limiting. Document labels in the sample data are synthetic, `/metrics` and `/health` are unauthenticated, and the authorization predicate is not covered by the HNSW or GIN indexes, which is fine at this size and unmeasured beyond it. Authorization has been tested with locally minted tokens and a local JWKS server, not against a real identity provider.
+- The Compose file uses local-only demo credentials (`policy_rag_local_only`); they are not secrets.
 - The held-out set is small and written by the system's author; it is not an independent benchmark.
 - Not production-ready. It is a portfolio project that demonstrates the retrieval design, the evidence gate and its evaluation.
 
@@ -243,6 +266,7 @@ Copy [`.env.example`](.env.example) to `.env` to override anything; every value 
 | Chunking | `CHUNK_SIZE`, `CHUNK_OVERLAP` |
 | Retrieval | `RETRIEVAL_MODE`, `RRF_K`, `HYBRID_CANDIDATES`, `RERANK_ENABLED`, `RERANK_MODEL` (also a build argument, because the image downloads it), `RERANK_CANDIDATES`, `HNSW_M`, `HNSW_EF_CONSTRUCTION`, `HNSW_EF_SEARCH` |
 | Evidence gate / RAG | `EVIDENCE_MIN_SIMILARITY`, `RAG_MAX_CONTEXT_CHUNKS` |
+| Authentication | `AUTH_MODE` (`off` default, or `jwt`), `AUTH_ISSUER`, `AUTH_AUDIENCE`, one of `AUTH_JWKS_URL` / `AUTH_PUBLIC_KEY` / `AUTH_JWT_SECRET`, `AUTH_ROLES_CLAIM`, `AUTH_TENANT_CLAIM`, `AUTH_DEPARTMENT_CLAIM`, `AUTH_LEEWAY_S`; `MCP_ACCESS_TOKEN` for the MCP server |
 | MCP | `MCP_TOOL_TIMEOUT_S` |
 | Observability | `TELEMETRY_ENABLED`, `METRICS_ENABLED`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `RECORD_QUERY_TEXT`, `LOG_FORMAT`, `LOG_LEVEL` |
 | Optional LLM | `LLM_PROVIDER` (`extractive` default, `openai_compatible` or `bedrock`), `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` |

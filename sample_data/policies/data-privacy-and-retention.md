@@ -4,6 +4,9 @@ title: Data Privacy and Retention Policy
 version: "1.4"
 category: privacy
 status: current
+tenant_id: default
+department: compliance
+access_level: restricted
 ---
 
 # Data Privacy and Retention Policy

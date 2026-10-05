@@ -23,6 +23,16 @@ class HealthResponse(BaseModel):
     detail: str | None = None
 
 
+class MeResponse(BaseModel):
+    auth_mode: Literal["off", "jwt"]
+    authenticated: bool
+    roles: list[str] = []
+    tenant_id: str | None = None
+    departments: list[str] = []
+    max_access_level: str | None = None
+    note: str | None = None
+
+
 class SearchFilters(BaseModel):
     """Metadata a search can be restricted to. Every given field must match (AND)."""
 

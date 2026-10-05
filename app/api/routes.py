@@ -11,10 +11,12 @@ from app.models.schemas import (
     AskResponse,
     DocumentInfo,
     HealthResponse,
+    MeResponse,
     SearchRequest,
     SearchResponse,
 )
 from app.rag.generator import GenerationError
+from app.security.deps import CallerScope
 
 router = APIRouter()
 
@@ -42,18 +44,39 @@ def health(request: Request, response: Response) -> HealthResponse:
 
 
 @router.get("/api/documents", response_model=list[DocumentInfo])
-def documents(request: Request) -> list[DocumentInfo]:
-    """The documents that have been ingested, with their chunk counts."""
-    return [DocumentInfo(**row) for row in list_documents(request.app.state.pool)]
+def documents(request: Request, scope: CallerScope) -> list[DocumentInfo]:
+    """The documents that have been ingested, with their chunk counts. With authentication on,
+    only the documents the caller may read."""
+    return [DocumentInfo(**row) for row in list_documents(request.app.state.pool, scope)]
+
+
+@router.get("/api/me", response_model=MeResponse)
+def me(request: Request, scope: CallerScope) -> MeResponse:
+    """What the server knows about the caller: roles, tenant, departments and the highest
+    access level they may read."""
+    if scope is None:
+        return MeResponse(
+            auth_mode=request.app.state.settings.auth_mode,
+            authenticated=False,
+            note="authentication is off (local demo mode): every document is readable",
+        )
+    return MeResponse(
+        auth_mode="jwt",
+        authenticated=True,
+        roles=list(scope.roles),
+        tenant_id=scope.tenant_id,
+        departments=sorted(scope.departments),
+        max_access_level=scope.max_level,
+    )
 
 
 @router.post("/api/search", response_model=SearchResponse)
-def search(body: SearchRequest, request: Request) -> SearchResponse:
+def search(body: SearchRequest, request: Request, scope: CallerScope) -> SearchResponse:
     """Semantic search: embed the query, then return the top-k closest chunks by cosine
     distance, optionally restricted to chunks whose metadata matches `filters`."""
     service = request.app.state.retrieval
     filters = body.filters.as_dict() if body.filters else {}
-    hits = service.search(body.query, body.top_k, filters, body.mode, body.rerank)
+    hits = service.search(body.query, body.top_k, filters, body.mode, body.rerank, scope)
     return search_response(
         query=body.query,
         top_k=body.top_k,
@@ -66,13 +89,13 @@ def search(body: SearchRequest, request: Request) -> SearchResponse:
 
 
 @router.post("/api/ask", response_model=AskResponse)
-def ask(body: AskRequest, request: Request) -> AskResponse:
+def ask(body: AskRequest, request: Request, scope: CallerScope) -> AskResponse:
     """Answer from the policy documents, with citations, or refuse when the retrieved
     evidence is not strong enough. Answers come from current policy unless `filters.status`
     says otherwise."""
     filters = body.filters.as_dict() if body.filters else {}
     try:
-        result = request.app.state.rag.ask(body.question, body.top_k, filters)
+        result = request.app.state.rag.ask(body.question, body.top_k, filters, scope)
     except (httpx.HTTPError, GenerationError) as exc:
         raise HTTPException(status_code=502, detail="answer generator unavailable") from exc
     return ask_response(result)

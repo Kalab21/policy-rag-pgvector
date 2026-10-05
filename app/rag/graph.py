@@ -26,6 +26,7 @@ from app.rag.generator import (
     GeneratorOutputError,
 )
 from app.retrieval.service import RetrievalService
+from app.security.access import AccessScope
 
 REFUSAL_MESSAGE = (
     "I can't answer that from the policy documents available to me. "
@@ -40,6 +41,7 @@ class RagState(TypedDict, total=False):
     question: str
     top_k: int
     filters: dict[str, str]
+    access: AccessScope | None  # what the caller may read; applied inside retrieval
     query: str
     retrieved: list[RetrievedChunk]  # everything the vector search returned
     context: list[RetrievedChunk]  # the subset that passed the evidence gate
@@ -67,7 +69,12 @@ def build_graph(
         return {"query": query}
 
     def retrieve(state: RagState) -> RagState:
-        chunks = retrieval.search(state["query"], state["top_k"], state.get("filters") or {})
+        chunks = retrieval.search(
+            state["query"],
+            state["top_k"],
+            state.get("filters") or {},
+            access=state.get("access"),
+        )
         return {"retrieved": chunks}
 
     def assess(state: RagState) -> RagState:
@@ -191,8 +198,14 @@ def build_graph(
     return graph.compile()
 
 
-def run_graph(compiled: Any, question: str, top_k: int, filters: Mapping[str, str]) -> RagState:
+def run_graph(
+    compiled: Any,
+    question: str,
+    top_k: int,
+    filters: Mapping[str, str],
+    access: AccessScope | None = None,
+) -> RagState:
     result: RagState = compiled.invoke(
-        {"question": question, "top_k": top_k, "filters": dict(filters)}
+        {"question": question, "top_k": top_k, "filters": dict(filters), "access": access}
     )
     return result

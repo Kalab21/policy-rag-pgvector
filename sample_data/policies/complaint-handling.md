@@ -4,6 +4,9 @@ title: Customer Complaint Handling Procedure
 version: "2.2"
 category: compliance
 status: current
+tenant_id: default
+department: compliance
+access_level: internal
 ---
 
 # Customer Complaint Handling Procedure

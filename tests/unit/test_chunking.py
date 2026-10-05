@@ -63,6 +63,10 @@ def test_chunk_indexes_are_sequential_and_metadata_is_attached() -> None:
         "category": "demo",
         "status": "current",
         "section": "Short section",
+        "tenant_id": "default",
+        "department": "general",
+        "access_level": "internal",
+        "access_rank": "1",
     }
 
 

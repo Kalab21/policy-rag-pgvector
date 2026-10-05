@@ -71,6 +71,22 @@ class Settings(BaseSettings):
     bedrock_timeout_s: float = Field(default=30.0, gt=0, le=300)
     bedrock_max_retries: int = Field(default=2, ge=0, le=5)
 
+    # Authentication. "off" (the default) is a local/demo mode: no login, every caller sees every
+    # document. "jwt" validates bearer tokens from an OIDC-style provider and limits every
+    # search, answer and MCP tool to what the token's roles, tenant and departments allow.
+    # Exactly one key source is needed: a JWKS URL, a PEM public key (asymmetric), or a shared
+    # secret of at least 32 characters (HS256, for local demos).
+    auth_mode: Literal["off", "jwt"] = "off"
+    auth_issuer: str | None = None
+    auth_audience: str | None = None
+    auth_jwks_url: str | None = None
+    auth_public_key: str | None = None
+    auth_jwt_secret: SecretStr | None = None
+    auth_roles_claim: str = "roles"
+    auth_tenant_claim: str = "tenant_id"
+    auth_department_claim: str = "department"
+    auth_leeway_s: int = Field(default=30, ge=0, le=300)
+
     # Observability. Spans and metrics are created in-process; nothing leaves the process
     # unless OTEL_EXPORTER_OTLP_ENDPOINT is set. Prometheus text is served at /metrics.
     telemetry_enabled: bool = True

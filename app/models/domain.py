@@ -17,6 +17,11 @@ class ParsedDocument:
     status: DocumentStatus
     source_path: str
     body: str  # normalized markdown, without the front matter
+    # Authorization attributes (see app.security.access). Unlabelled documents are internal to
+    # the default tenant.
+    tenant_id: str = "default"
+    department: str = "general"
+    access_level: str = "internal"
 
 
 @dataclass(frozen=True)

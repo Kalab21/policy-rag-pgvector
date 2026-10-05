@@ -19,7 +19,9 @@ class ScriptedRetrieval:
         self.chunks = chunks
         self.calls: list[tuple[str, int, dict[str, str]]] = []
 
-    def search(self, query: str, top_k: int, filters: dict[str, str]) -> list[RetrievedChunk]:
+    def search(
+        self, query: str, top_k: int, filters: dict[str, str], **_kwargs: object
+    ) -> list[RetrievedChunk]:
         self.calls.append((query, top_k, filters))
         return self.chunks
 

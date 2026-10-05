@@ -17,6 +17,7 @@ from app.ingestion.catalog import get_document
 from app.models.schemas import AskResponse, SearchFilters, SearchResponse
 from app.rag.service import RagService
 from app.retrieval.service import RetrievalService
+from app.security.access import AccessScope
 
 # MCP callers get a tighter bound than the HTTP API (which allows 20).
 MAX_TOP_K = 10
@@ -73,11 +74,13 @@ class PolicyTools:
         rag: RagService,
         pool: DictPool,
         enforced_filters: Mapping[str, str] | None = None,
+        access: AccessScope | None = None,
     ) -> None:
         self._retrieval = retrieval
         self._rag = rag
         self._pool = pool
         self._enforced = dict(enforced_filters or {})
+        self._access = access  # fixed for the life of the server, from a validated token
 
     def _filters(self, filters: SearchFilters | None) -> dict[str, str]:
         return merge_filters(filters.as_dict() if filters else {}, self._enforced)
@@ -90,7 +93,7 @@ class PolicyTools:
         mode: RetrievalModeName | None = None,
     ) -> SearchResponse:
         applied = self._filters(filters)
-        hits = self._retrieval.search(query, top_k, applied, mode)
+        hits = self._retrieval.search(query, top_k, applied, mode, access=self._access)
         return search_response(
             query=query,
             top_k=top_k,
@@ -102,11 +105,11 @@ class PolicyTools:
         )
 
     def get_policy_document(self, document: str, version: str | None = None) -> DocumentContent:
-        found = get_document(self._pool, document, version, self._enforced)
+        found = get_document(self._pool, document, version, self._enforced, self._access)
         if found is None:
             raise ToolInputError("no such document (or it is not available to you)")
         return DocumentContent(**found)
 
     def ask_policy(self, question: str, filters: SearchFilters | None = None) -> AskResponse:
-        result = self._rag.ask(question, 5, self._filters(filters))
+        result = self._rag.ask(question, 5, self._filters(filters), self._access)
         return ask_response(result)
