@@ -38,7 +38,8 @@ Demonstrates real vector storage, semantic retrieval, grounded answer/refusal lo
 | MCP | A read-only Model Context Protocol server (stdio) with three bounded tools: `search_policy`, `get_policy_document`, `ask_policy` |
 | Observability | OpenTelemetry spans for each pipeline stage, Prometheus metrics at `/metrics`, structured JSON logs with request ids, optional OTLP export |
 | Security | JWT validation (OIDC/JWKS, PEM key, or demo shared secret), roles, and document-level authorization enforced inside the retrieval SQL (tenant, access level, department); the HTTP API and the MCP server obey the same scope |
-| Tests | 483 (266 unit, 217 integration against real PostgreSQL + pgvector) |
+| Infrastructure | Terraform reference architecture for AWS (ECS Fargate, ALB, RDS PostgreSQL 16, Secrets Manager, CloudWatch, least-privilege IAM). Validated and scanned in CI; **not deployed** (see [`infra/terraform`](infra/terraform/README.md)) |
+| Tests | 490 (273 unit, 217 integration against real PostgreSQL + pgvector) |
 | CI | ruff, mypy, unit + integration tests with a pgvector service container, pip-audit, bandit, Docker Compose smoke test |
 
 Only LangGraph is used from the LangChain ecosystem; there is no other LangChain code in the app.
@@ -111,6 +112,12 @@ docker compose up -d --build && docker compose exec -T api python -m scripts.ing
 TOKEN=$(docker compose exec -T api python -m scripts.make_demo_token --role employee 2>/dev/null)
 curl -s localhost:8000/api/me -H "Authorization: Bearer $TOKEN"
 ```
+
+### AWS reference deployment
+
+[`infra/terraform`](infra/terraform/README.md) describes how this service could run on AWS: Fargate behind an internal-by-default load balancer, RDS PostgreSQL 16 with pgvector in private subnets (its password generated and held by Secrets Manager, never in the configuration), mandatory JWT authentication against your OIDC provider, and narrowly scoped IAM roles. `terraform fmt`, `terraform validate` and a Trivy scan (no HIGH or CRITICAL findings) run in CI.
+
+**Terraform AWS deployment architecture provided; not deployed.** It has never been applied to an AWS account, so ECS runtime behaviour, pgvector availability in a given RDS region and the identity-provider connection are untested, and this repository makes no claim of a running AWS environment.
 
 ### Observability
 
@@ -272,7 +279,7 @@ Copy [`.env.example`](.env.example) to `.env` to override anything; every value 
 | Optional LLM | `LLM_PROVIDER` (`extractive` default, `openai_compatible` or `bedrock`), `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` |
 | Bedrock | `BEDROCK_MODEL_ID`, `BEDROCK_REGION`, `BEDROCK_MAX_TOKENS`, `BEDROCK_TEMPERATURE`, `BEDROCK_TIMEOUT_S`, `BEDROCK_MAX_RETRIES` (AWS credentials are never configured here) |
 
-Settings that exist in the application but are deliberately not forwarded by Compose: `DATABASE_URL` (derived from the `POSTGRES_*` values), `EMBEDDING_PROVIDER` (only `fastembed` is implemented), `SAMPLE_DATA_DIR`, `AUTO_INIT_SCHEMA`, `DB_POOL_MIN_SIZE`, `DB_POOL_MAX_SIZE` and `LLM_TIMEOUT_S`. They work when running the app directly, not through Compose.
+Settings that exist in the application but are deliberately not forwarded by Compose: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` and `DB_SSLMODE` (the database in parts, used by the AWS deployment, where a managed secret supplies the password; setting `DB_HOST` replaces `DATABASE_URL`), `DATABASE_URL` (derived from the `POSTGRES_*` values), `EMBEDDING_PROVIDER` (only `fastembed` is implemented), `SAMPLE_DATA_DIR`, `AUTO_INIT_SCHEMA`, `DB_POOL_MIN_SIZE`, `DB_POOL_MAX_SIZE` and `LLM_TIMEOUT_S`. They work when running the app directly, not through Compose.
 
 Notes:
 - Changing `EMBEDDING_MODEL` needs `docker compose up --build`. If the new model has a different vector width, also set `EMBEDDING_DIM` and recreate the `chunks` table (for example `docker compose down -v`), because the API refuses to start when the column width and `EMBEDDING_DIM` disagree.
@@ -288,5 +295,6 @@ app/db          schema, pool           app/retrieval   pgvector search + filters
 app/models      API + domain types     app/rag         evidence gate, generators, LangGraph
 app/evaluation  metrics, gold, runner  scripts         ingest, evaluate_retrieval
 sample_data     synthetic policies     eval            gold questions + latest results
+infra/terraform  AWS reference deployment (not deployed)
 tests/unit  tests/integration
 ```
