@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import quote
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,6 +16,16 @@ class Settings(BaseSettings):
 
     # Local development default; docker-compose and CI override it.
     database_url: str = "postgresql://policy_rag:policy_rag_local_only@localhost:5433/policy_rag"
+
+    # Alternatively the database can be given in parts (used when a managed secret supplies the
+    # user and password separately, as on AWS). If DB_HOST is set, these build DATABASE_URL and
+    # replace any DATABASE_URL that was also set.
+    db_host: str | None = None
+    db_port: int = Field(default=5432, ge=1, le=65535)
+    db_name: str | None = None
+    db_user: str | None = None
+    db_password: SecretStr | None = None
+    db_sslmode: Literal["disable", "prefer", "require", "verify-ca", "verify-full"] = "require"
 
     # The embedding model and the width of the vector column must agree. The column width
     # is checked against this value at startup.
@@ -104,6 +115,19 @@ class Settings(BaseSettings):
 
     db_pool_min_size: int = Field(default=1, ge=1)
     db_pool_max_size: int = Field(default=5, ge=1)
+
+    @model_validator(mode="after")
+    def _database_url_from_parts(self) -> "Settings":
+        if self.db_host:
+            if not (self.db_name and self.db_user and self.db_password):
+                raise ValueError("DB_HOST also needs DB_NAME, DB_USER and DB_PASSWORD")
+            user = quote(self.db_user, safe="")
+            password = quote(self.db_password.get_secret_value(), safe="")
+            self.database_url = (
+                f"postgresql://{user}:{password}@{self.db_host}:{self.db_port}/"
+                f"{quote(self.db_name, safe='')}?sslmode={self.db_sslmode}"
+            )
+        return self
 
     @model_validator(mode="after")
     def _overlap_smaller_than_chunk(self) -> "Settings":

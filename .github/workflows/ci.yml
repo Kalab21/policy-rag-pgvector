@@ -68,6 +68,29 @@ jobs:
       - name: Integration tests (real PostgreSQL + pgvector)
         run: pytest tests/integration -q
 
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.9.8"
+      - name: Format check
+        run: terraform fmt -check -recursive
+        working-directory: infra/terraform
+      - name: Validate (no cloud account or credentials needed)
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+        working-directory: infra/terraform/environments/dev
+      - name: IaC security scan (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: infra/terraform
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
   security:
     runs-on: ubuntu-latest
     steps:

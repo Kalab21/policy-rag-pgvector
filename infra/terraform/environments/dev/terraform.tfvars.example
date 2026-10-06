@@ -1,0 +1,23 @@
+# Copy to terraform.tfvars (git-ignored). Contains no secrets: the database password is generated
+# by RDS and kept in Secrets Manager, and token verification uses the identity provider's public
+# JWKS endpoint.
+
+region    = "us-east-1"
+image_tag = "0.1.0"
+
+# Who may reach the load balancer. An internal load balancer is reachable from inside the VPC and
+# any network peered or VPN-connected to it.
+alb_ingress_cidrs = ["10.0.0.0/8"]
+
+# Your OIDC provider.
+auth_issuer   = "https://login.example.com/"
+auth_audience = "policy-rag"
+auth_jwks_url = "https://login.example.com/.well-known/jwks.json"
+
+# Internet-facing needs a certificate:
+# public_alb      = true
+# certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/..."
+
+# Optional Bedrock generator (use a model your account can invoke):
+# bedrock_model_id   = "<model id>"
+# bedrock_model_arns = ["arn:aws:bedrock:us-east-1::foundation-model/<model id>"]
