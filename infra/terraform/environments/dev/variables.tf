@@ -7,7 +7,7 @@ variable "region" {
 variable "name" {
   description = "Name prefix for every resource."
   type        = string
-  default     = "policy-rag-dev"
+  default     = "policy-rag-platform-dev"
 }
 
 variable "image_tag" {

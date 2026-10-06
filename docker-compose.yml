@@ -1,5 +1,9 @@
 # Local stack: PostgreSQL with the pgvector extension, and the API.
 # Credentials default to the local-only values in .env.example.
+# The project name is fixed so containers, networks, volumes and images are named
+# policy-rag-platform-* wherever the repository is checked out.
+name: policy-rag-platform
+
 services:
   db:
     image: pgvector/pgvector:pg16
