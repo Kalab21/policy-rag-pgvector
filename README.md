@@ -11,25 +11,12 @@ A retrieval-augmented generation (RAG) service over **synthetic** lending-policy
 - **Evaluation:** separate tuning and held-out question sets (Hit@K, Recall@K, MRR, nDCG) with regression floors in CI
 - **Engineering:** 490 automated tests, 217 of them against real PostgreSQL + pgvector
 
-```
-Query ──► caller's access scope (tenant, level, department) ANDed into every query below
- │
- ├─ semantic (default) ─► MiniLM embedding ─► pgvector HNSW (cosine)
- ├─ lexical            ─► PostgreSQL full-text search (tsvector + GIN)
- └─ hybrid (optional)  ─► semantic + lexical ─► Reciprocal Rank Fusion
-          │               (metadata filters apply inside each retriever)
-          ▼
-   candidate set ─► cross-encoder reranker (optional, off by default)
-          ▼
-    Evidence gate ── insufficient similarity ──► Refuse (no sources, reason returned)
-          │ sufficient
-          ▼
-      LangGraph flow ─► generator: extractive (default)  |  Bedrock / OpenAI-compatible (optional)
-          ▼
-   Citation validation ─► Answer with sources   (or Refuse if no valid citation)
-
- Also: MCP tool server (stdio) · JWT + roles · OpenTelemetry · Terraform AWS reference architecture
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-dark.svg">
+    <img src="docs/architecture.svg" alt="Policy RAG Platform architecture. A client request passes JWT validation, which produces an access scope applied inside every query. Semantic (pgvector HNSW), lexical (PostgreSQL full-text) or hybrid (Reciprocal Rank Fusion) retrieval produces a candidate set, optionally reranked by a cross-encoder. An evidence gate refuses when similarity is insufficient; otherwise a LangGraph flow generates an answer and citation validation returns it with sources or refuses. MCP, OpenTelemetry, Terraform and CI run across the platform." width="1000">
+  </picture>
+</p>
 
 **Stack:** Python · FastAPI · PostgreSQL · pgvector · HNSW · Hybrid Search · RRF · Cross-Encoder Reranking · LangGraph · MCP · JWT/RBAC · OpenTelemetry · Docker · Terraform · GitHub Actions
 
