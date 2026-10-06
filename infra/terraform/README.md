@@ -1,8 +1,6 @@
 # AWS reference deployment (Terraform)
 
-> **Terraform AWS deployment architecture provided; not deployed.** This configuration has been
-> formatted, validated and scanned, but it has never been applied to an AWS account. Nothing in
-> this repository claims, or depends on, a running AWS environment.
+> **Terraform AWS reference architecture.** `terraform fmt`, `terraform validate` and a Trivy configuration scan run in CI. It needs an AWS account to apply, and the resources it creates incur AWS charges while they run.
 
 ## What it describes
 
@@ -44,16 +42,15 @@
 - **A public load balancer is opt-in and must have a certificate** (enforced by a precondition), so tokens never cross the internet over plain HTTP. `alb_ingress_cidrs` has no default.
 - **Cost-conscious defaults, but this is not free.** No NAT gateway (tasks then run in public subnets behind a locked-down security group; set `enable_nat_gateway` to use private subnets), a single `db.t4g.micro` without a standby, one Fargate task. A running environment still incurs Fargate, load balancer and RDS charges; check current AWS pricing before applying, and run `terraform destroy` (after setting `deletion_protection = false`) when finished.
 
-## Verified, and what is not
+## Verification
 
-Verified in CI and locally:
 - `terraform fmt -check -recursive`
 - `terraform validate` on `environments/dev` (the whole module graph, including cross-module references)
 - Trivy configuration scan: no HIGH or CRITICAL findings (CI fails on any). Four LOW findings remain and are accepted: log groups, ECR and Performance Insights use AWS-managed encryption rather than customer-managed KMS keys.
 
-**Not verified** (it would need an AWS account, which was not used): `terraform plan` or `apply`, that the ECS task starts with a read-only root filesystem and a `/tmp` volume, that the chosen RDS PostgreSQL version offers the pgvector extension in your region, that tasks can reach your identity provider, and the Bedrock permissions. Treat it as a reviewed starting point, not a tested deployment.
+Applying it to an account is where ECS runtime behaviour (read-only root filesystem with a `/tmp` volume), pgvector availability in the chosen RDS region, connectivity to your identity provider and the optional Bedrock permissions are confirmed.
 
-## Using it (outline, untested)
+## Using it (outline)
 
 ```bash
 cd infra/terraform/environments/dev

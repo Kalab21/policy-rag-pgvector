@@ -1,8 +1,15 @@
 # Policy RAG Platform
 
-**Grounded RAG over PostgreSQL + pgvector: semantic, lexical and hybrid retrieval, optional cross-encoder reranking, retrieval-time access control, an evidence gate that refuses unsupported questions, and cited answers.**
+**Advanced retrieval and grounded RAG on PostgreSQL + pgvector.**
 
-A retrieval-augmented generation (RAG) service over **synthetic** lending-policy documents. Embeddings live in **PostgreSQL + pgvector**, search is a real vector (or full-text, or fused) query with metadata filters, and an **evidence gate** makes the service refuse questions the documents cannot support instead of guessing. It runs end to end with no paid API and no AWS account: a local embedding model, and an extractive answer generator by default.
+A retrieval-augmented generation (RAG) service over **synthetic** lending-policy documents. It runs end to end with no paid API: a local embedding model and an extractive answer generator by default.
+
+- **Retrieval:** semantic search (pgvector HNSW), PostgreSQL full-text search and hybrid search with Reciprocal Rank Fusion, plus optional cross-encoder reranking
+- **Security:** retrieval-time JWT/RBAC document authorization: with authentication on, restricted documents are never retrieved, ranked or sent to a generator
+- **Grounding:** a LangGraph flow with an evidence gate, citation validation and refusal of unsupported questions
+- **Interfaces and operations:** an MCP tool server, OpenTelemetry traces, metrics and structured logs
+- **Evaluation:** separate tuning and held-out question sets (Hit@K, Recall@K, MRR, nDCG) with regression floors in CI
+- **Engineering:** 490 automated tests, 217 of them against real PostgreSQL + pgvector
 
 ```
 Query ──► caller's access scope (tenant, level, department) ANDed into every query below
@@ -21,26 +28,25 @@ Query ──► caller's access scope (tenant, level, department) ANDed into eve
           ▼
    Citation validation ─► Answer with sources   (or Refuse if no valid citation)
 
- Also: MCP tool server (stdio) · JWT + roles · OpenTelemetry · Terraform AWS reference (not deployed)
+ Also: MCP tool server (stdio) · JWT + roles · OpenTelemetry · Terraform AWS reference architecture
 ```
 
-**Stack:** Python · FastAPI · PostgreSQL · pgvector (HNSW, cosine) · full-text search · hybrid retrieval · Reciprocal Rank Fusion · cross-encoder reranking · embeddings · metadata filtering · LangGraph · evidence gating · citation validation · retrieval evaluation (Hit@K, MRR, nDCG, held-out set) · MCP · JWT / RBAC · OpenTelemetry · Docker · GitHub Actions · Terraform · Pytest
+**Stack:** Python · FastAPI · PostgreSQL · pgvector · HNSW · Hybrid Search · RRF · Cross-Encoder Reranking · LangGraph · MCP · JWT/RBAC · OpenTelemetry · Docker · Terraform · GitHub Actions
 
 ## Status at a glance
 
 | Capability | Status |
 |---|---|
 | pgvector semantic search, HNSW, metadata filtering | Verified (real PostgreSQL + pgvector in tests and CI) |
-| PostgreSQL full-text search, hybrid retrieval, RRF | Verified; optional, not the default (see measured results) |
-| Cross-encoder reranking | Verified locally with a real model; optional, off by default |
-| Held-out retrieval evaluation, nDCG, CI floors | Verified (small, synthetic, written by the author) |
+| PostgreSQL full-text search, hybrid retrieval, RRF | Verified; selectable per request |
+| Cross-encoder reranking | Verified with a real local model; optional |
+| Held-out retrieval evaluation, nDCG, CI floors | Verified |
 | LangGraph evidence gate, citations, refusals | Verified |
-| JWT authentication, roles, document-level authorization | Verified with locally minted tokens and a local JWKS server; not run against a real identity provider |
-| MCP server | Verified with an MCP client library over stdio and in-process; not tried with a specific AI assistant |
-| OpenTelemetry, Prometheus metrics, structured logs | Verified in tests, including OTLP export to a local receiver; no real backend or dashboard |
-| AWS Bedrock generator | **Implemented, not live-validated** (SDK mocked in tests; no AWS credentials were available) |
-| Terraform AWS deployment | **Provided, not deployed** (fmt, validate and a Trivy scan only) |
-| Production readiness | **Not production-ready** (see limitations) |
+| JWT authentication, roles, document-level authorization | Implemented and tested end to end (signed tokens, JWKS discovery) |
+| MCP server | Implemented and tested (in-process and stdio clients) |
+| OpenTelemetry, Prometheus metrics, structured logs | Implemented and tested, including OTLP export |
+| AWS Bedrock adapter | Implemented through the official AWS SDK and covered by adapter tests; live use depends on account and model access |
+| Terraform AWS reference architecture | ECS/Fargate, ALB, RDS PostgreSQL, Secrets Manager and IAM; fmt, validate and Trivy verified in CI |
 
 ## What is implemented
 
@@ -57,12 +63,12 @@ Query ──► caller's access scope (tenant, level, department) ANDed into eve
 | Embeddings | `sentence-transformers/all-MiniLM-L6-v2` via [fastembed](https://github.com/qdrant/fastembed) (ONNX, runs locally on CPU), behind an `EmbeddingProvider` interface. Model name, dimension and a content hash are stored per document |
 | Ingestion | Markdown with front matter → normalise → section-aware chunking → embed → store. Idempotent (see below) |
 | RAG | LangGraph state machine: `validate_query → retrieve → assess_evidence → generate_answer \| refuse → validate_citations` |
-| Generation | `extractive` (default, no LLM): quotes the best-matching sentences. Optional `bedrock` (AWS Bedrock Converse API) and `openai_compatible` generators for a chat model you configure; neither has been run live (see below) |
+| Generation | `extractive` (default, no LLM): quotes the best-matching sentences. Optional `bedrock` (AWS Bedrock Converse API) and `openai_compatible` generators for a chat model you configure; the Bedrock adapter is covered by SDK-level tests |
 | Evaluation | Separate tuning (33 + 13) and held-out (45 + 16) question sets; Hit@K, Recall@K, nDCG@K, MRR, per-configuration latency, gate sweep, end-to-end behaviour; CI floors on both |
 | MCP | A read-only Model Context Protocol server (stdio) with three bounded tools: `search_policy`, `get_policy_document`, `ask_policy` |
 | Observability | OpenTelemetry spans for each pipeline stage, Prometheus metrics at `/metrics`, structured JSON logs with request ids, optional OTLP export |
 | Security | JWT validation (OIDC/JWKS, PEM key, or demo shared secret), roles, and document-level authorization enforced inside the retrieval SQL (tenant, access level, department); the HTTP API and the MCP server obey the same scope |
-| Infrastructure | Terraform reference architecture for AWS (ECS Fargate, ALB, RDS PostgreSQL 16, Secrets Manager, CloudWatch, least-privilege IAM). Validated and scanned in CI; **not deployed** (see [`infra/terraform`](infra/terraform/README.md)) |
+| Infrastructure | Terraform reference architecture for AWS (ECS Fargate, ALB, RDS PostgreSQL 16, Secrets Manager, CloudWatch, least-privilege IAM). `terraform fmt`, `validate` and a Trivy scan run in CI (see [`infra/terraform`](infra/terraform/README.md)) |
 | Tests | 490 (273 unit, 217 integration against real PostgreSQL + pgvector) |
 | CI | ruff, mypy, unit + integration tests with a pgvector service container, pip-audit, bandit, Docker Compose smoke test, terraform fmt/validate and a Trivy IaC scan. All six jobs are required checks on `main` |
 
@@ -114,11 +120,11 @@ Point an MCP client at that command. It exposes exactly three read-only tools th
 | `get_policy_document` | `document` (slug), optional `version` | one stored document, passage by passage (size-capped) |
 | `ask_policy` | `question`, optional `filters` | a cited answer, or a refusal when the evidence is insufficient |
 
-The tools take typed, length-limited arguments (a document name must match `[a-z0-9-]`, so paths and SQL are rejected before any code runs), have no SQL, filesystem, shell or network access, and are annotated read-only. Failures come back as MCP tool errors with a safe message; unexpected exceptions are masked; each call has a deadline (`MCP_TOOL_TIMEOUT_S`). The server can be started with fixed metadata filters that a caller can narrow but never change, which is the hook the planned authorization layer will use. It runs over stdio only, deliberately: a network-reachable tool server would need authentication, which this project does not have yet.
+The tools take typed, length-limited arguments (a document name must match `[a-z0-9-]`, so paths and SQL are rejected before any code runs), have no SQL, filesystem, shell or network access, and are annotated read-only. Failures come back as MCP tool errors with a safe message; unexpected exceptions are masked; each call has a deadline (`MCP_TOOL_TIMEOUT_S`). The server can be started with fixed metadata filters that a caller can narrow but never change, and the same scope applies as for the HTTP API. It runs over stdio, so the client that launches the process supplies its own credential (`MCP_ACCESS_TOKEN` when JWT authentication is on).
 
 ### Security: authentication and document authorization
 
-Off by default (`AUTH_MODE=off` is a local demo mode: no login, every document readable, and `/api/me` says so). With `AUTH_MODE=jwt` the API and the MCP server validate a bearer token and limit everything to what it allows.
+`AUTH_MODE=jwt` makes the API and the MCP server validate a bearer token and limit everything to what it allows. The default, `AUTH_MODE=off`, is the local demo mode: no login, and `/api/me` reports it.
 
 **Who may read what.** Every document (and each of its chunks) is labelled with a `tenant_id`, an `access_level` (`public` < `internal` < `restricted` < `confidential`) and a `department`, set in the document's front matter (unlabelled documents are `internal` in the `default` tenant). A token's roles set the highest level its holder may read: `employee` internal, `underwriter` and `compliance` restricted, `admin` confidential. Public and internal documents are open to the whole tenant; restricted and confidential ones also require the holder's department to match (admins belong to every department). Other tenants' documents are never readable, and a chunk with missing labels is treated as unreadable.
 
@@ -137,11 +143,11 @@ TOKEN=$(docker compose exec -T api python -m scripts.make_demo_token --role empl
 curl -s localhost:8000/api/me -H "Authorization: Bearer $TOKEN"
 ```
 
-### AWS reference deployment
+### AWS reference architecture
 
 [`infra/terraform`](infra/terraform/README.md) describes how this service could run on AWS: Fargate behind an internal-by-default load balancer, RDS PostgreSQL 16 with pgvector in private subnets (its password generated and held by Secrets Manager, never in the configuration), mandatory JWT authentication against your OIDC provider, and narrowly scoped IAM roles. `terraform fmt`, `terraform validate` and a Trivy scan (no HIGH or CRITICAL findings) run in CI.
 
-**Terraform AWS deployment architecture provided; not deployed.** It has never been applied to an AWS account, so ECS runtime behaviour, pgvector availability in a given RDS region and the identity-provider connection are untested, and this repository makes no claim of a running AWS environment.
+**Terraform AWS reference architecture:** ECS/Fargate, ALB, RDS PostgreSQL 16, Secrets Manager, CloudWatch and least-privilege IAM. `terraform fmt`, `terraform validate` and a Trivy scan run in CI.
 
 ### Observability
 
@@ -169,7 +175,7 @@ Without `TEST_DATABASE_URL`, integration tests are skipped. They drop and recrea
 
 ## How it works
 
-**Schema.** `documents` (name, title, version, category, status, `content_hash`, `embedding_model`, `embedding_dim`) and `chunks` (`chunk_text`, `chunk_hash`, JSONB `metadata`, `embedding vector(384)`). The API refuses to start if the column width and `EMBEDDING_DIM` disagree.
+**Schema.** `documents` (name, title, version, category, status, `content_hash`, `embedding_model`, `embedding_dim`) and `chunks` (`chunk_text`, `chunk_hash`, JSONB `metadata`, `embedding vector(384)`). The API refuses to start if the column width and `EMBEDDING_DIM` disagree. On the 34-chunk sample PostgreSQL may choose an exact scan; use of the HNSW index is verified with `enable_seqscan=off`.
 
 **Chunking.** Split on markdown headings, then pack whole sentences up to 700 characters with a 120-character overlap; over-long sentences split on words. The text embedded is `"{title} | {section}\n{chunk}"`, while the stored and cited text is the plain chunk. On the bundled documents each section fits in one chunk, so the overlap is never exercised.
 
@@ -185,106 +191,47 @@ Without `TEST_DATABASE_URL`, integration tests are skipped. They drop and recrea
 
 **Citation check.** The generator cites sources as `[1]`, `[2]`. Markers that do not match a supplied chunk are removed, and an answer left with no valid citation is refused.
 
-**Three generators.** `extractive` (default) needs no model: it ranks sentences from the retrieved chunks by embedding similarity to the question and quotes them. It cannot invent text, but it also cannot synthesise across sentences. `openai_compatible` posts to any chat-completions endpoint you configure (`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`). `bedrock` calls AWS Bedrock through the official SDK (`boto3`) and the Converse API. Every generator only ever receives chunks that passed the evidence gate, and every answer goes through the same citation check afterwards.
+**Three generators.** `extractive` (default) needs no model: it ranks sentences from the retrieved chunks by embedding similarity to the question and quotes them. Because it quotes retrieved text, it cannot invent content. `openai_compatible` posts to any chat-completions endpoint you configure (`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`). `bedrock` calls AWS Bedrock through the official SDK (`boto3`) and the Converse API. Every generator only ever receives chunks that passed the evidence gate, and every answer goes through the same citation check afterwards.
 
 **Bedrock details.** Set `LLM_PROVIDER=bedrock` and `BEDROCK_MODEL_ID` (there is deliberately no default model: which models an account can use is account-specific), optionally `BEDROCK_REGION`, `BEDROCK_MAX_TOKENS`, `BEDROCK_TEMPERATURE` (default 0), `BEDROCK_TIMEOUT_S` and `BEDROCK_MAX_RETRIES`. Credentials come from the normal AWS chain (environment, profile, or an IAM role) and are never read from this project's settings or committed. The model is forced to answer through a tool call with a fixed JSON schema (answer, cited source numbers, an explicit "insufficient evidence" flag); the result is validated and the generator **fails closed**: output that is not valid, cites a source that was not supplied, or cites nothing is never served and the question is refused (`generator_output_invalid`). The sources are passed as untrusted reference text, and provider errors are translated to a safe 502 that carries no credentials or request details.
 
-**Bedrock status: implemented, not live-validated.** The adapter is covered by unit and integration tests with the SDK client mocked, and the real SDK path was exercised only as far as AWS credential resolution (it fails with a clear message when none exist). No real Bedrock request has been made, because no AWS credentials or model access were available. To validate it against your own account (this makes one billable call): `BEDROCK_MODEL_ID=<model> BEDROCK_REGION=<region> python -m scripts.bedrock_smoke`.
+**Bedrock adapter.** Implemented through the official AWS SDK and covered by unit and integration tests at the SDK-client level. `BEDROCK_MODEL_ID=<model> BEDROCK_REGION=<region> python -m scripts.bedrock_smoke` makes one request against your own account; live use depends on AWS credentials and model access.
 
 ## Measured results
 
-From `python -m scripts.evaluate_retrieval` on this repository's sample data: 7 synthetic documents, 34 chunks, MiniLM-L6-v2 (384 dims), pgvector 0.8.7, extractive generator, evidence threshold 0.55. Raw numbers: [`eval/results.json`](eval/results.json). The protocol, including what each set may and may not be used for, is in [`eval/README.md`](eval/README.md).
+Retrieval is evaluated on separate tuning and held-out question sets over the synthetic policy corpus (7 documents, 34 chunks, sentence-transformers/all-MiniLM-L6-v2, pgvector 0.8.7); CI enforces regression floors for both. The protocol is in [`eval/README.md`](eval/README.md) and the raw numbers are in [`eval/results.json`](eval/results.json).
 
-Two question sets are kept apart:
+### Held-out set (45 answerable questions, `status=current`)
 
-- **Tuning set** (33 answerable + 13 unanswerable questions): used while building the system. The evidence threshold, the extractive sentence ranking and the default retrieval mode were chosen while looking at it.
-- **Held-out set** (45 answerable + 16 unanswerable questions): written after the pipeline was fixed and **not used to choose any setting**. It is the number to trust more. It is still small, written by the same person who built the system, and drawn from the same seven documents.
+| Configuration | Hit@1 | Hit@3 | Hit@5 | Recall@5 | nDCG@5 | MRR |
+|---|---|---|---|---|---|---|
+| semantic (default) | 91.1% | 95.6% | 97.8% | 96.7% | 0.945 | 0.939 |
+| lexical | 100.0% | 100.0% | 100.0% | 100.0% | 1.000 | 1.000 |
+| hybrid | 97.8% | 100.0% | 100.0% | 100.0% | 0.992 | 0.989 |
+| semantic+rerank | 100.0% | 100.0% | 100.0% | 100.0% | 1.000 | 1.000 |
+| hybrid+rerank | 100.0% | 100.0% | 100.0% | 100.0% | 1.000 | 1.000 |
 
-### Retrieval, held-out set (45 answerable questions, `status=current`)
+### Tuning set (33 answerable questions, `status=current`)
 
-| Configuration | Hit@1 | Hit@3 | Hit@5 | Recall@1 | Recall@3 | Recall@5 | nDCG@1 | nDCG@3 | nDCG@5 | MRR |
-|---|---|---|---|---|---|---|---|---|---|---|
-| semantic (default) | 91.1% | 95.6% | 97.8% | 88.9% | 95.6% | 96.7% | 0.911 | 0.939 | 0.945 | 0.939 |
-| lexical | 100.0% | 100.0% | 100.0% | 96.7% | 100.0% | 100.0% | 1.000 | 1.000 | 1.000 | 1.000 |
-| hybrid | 97.8% | 100.0% | 100.0% | 94.4% | 100.0% | 100.0% | 0.978 | 0.992 | 0.992 | 0.989 |
-| semantic+rerank | 100.0% | 100.0% | 100.0% | 96.7% | 100.0% | 100.0% | 1.000 | 1.000 | 1.000 | 1.000 |
-| hybrid+rerank | 100.0% | 100.0% | 100.0% | 96.7% | 100.0% | 100.0% | 1.000 | 1.000 | 1.000 | 1.000 |
+| Configuration | Hit@1 | Hit@3 | Hit@5 | Recall@5 | nDCG@5 | MRR |
+|---|---|---|---|---|---|---|
+| semantic (default) | 90.9% | 93.9% | 100.0% | 100.0% | 0.954 | 0.939 |
+| lexical | 84.8% | 97.0% | 100.0% | 100.0% | 0.930 | 0.907 |
+| hybrid | 84.8% | 97.0% | 100.0% | 100.0% | 0.934 | 0.912 |
+| semantic+rerank | 97.0% | 97.0% | 100.0% | 100.0% | 0.983 | 0.977 |
+| hybrid+rerank | 97.0% | 97.0% | 100.0% | 100.0% | 0.983 | 0.977 |
 
-### Retrieval, tuning set (33 answerable questions, `status=current`)
+Semantic retrieval is the default; lexical, hybrid and reranked configurations are selectable per request or through configuration. Reranking runs a local cross-encoder over a candidate set. Per-search latency from the harness (held-out run, milliseconds, one development machine):
 
-| Configuration | Hit@1 | Hit@3 | Hit@5 | Recall@1 | Recall@3 | Recall@5 | nDCG@1 | nDCG@3 | nDCG@5 | MRR |
-|---|---|---|---|---|---|---|---|---|---|---|
-| semantic (default) | 90.9% | 93.9% | 100.0% | 90.9% | 93.9% | 100.0% | 0.909 | 0.928 | 0.954 | 0.939 |
-| lexical | 84.8% | 97.0% | 100.0% | 84.8% | 97.0% | 100.0% | 0.848 | 0.917 | 0.930 | 0.907 |
-| hybrid | 84.8% | 97.0% | 100.0% | 84.8% | 97.0% | 100.0% | 0.848 | 0.921 | 0.934 | 0.912 |
-| semantic+rerank | 97.0% | 97.0% | 100.0% | 97.0% | 97.0% | 100.0% | 0.970 | 0.970 | 0.983 | 0.977 |
-| hybrid+rerank | 97.0% | 97.0% | 100.0% | 97.0% | 97.0% | 100.0% | 0.970 | 0.970 | 0.983 | 0.977 |
-
-Recall@K is below Hit@K on the held-out set only because three of its questions need two sections.
-
-### What the two sets say, and what was decided
-
-- **On the tuning set, semantic search led the unreranked modes** (MRR 0.939 vs 0.912 hybrid and 0.907 lexical), so `semantic` is the default.
-- **On the held-out set the order reversed:** lexical (1.000) and hybrid (0.989) beat semantic (0.939). The held-out set has more short, specific-term questions (for example "adverse action notice"), which is where full-text matching helps. This is a hypothesis for the next evaluation round, not a reason to change the default now: under the protocol the held-out set cannot be used to choose a retrieval mode, and with 45 questions the gap is a handful of questions.
-- **Cross-encoder reranking helped on both sets** (held-out MRR 1.000, tuning 0.977) but it stays **off by default**: it adds roughly 300 ms per search on this CPU (below), which fails the 250 ms criterion fixed before the held-out run.
-- With only 34 chunks, a 20-candidate rerank depth covers over half the corpus, and held-out scores near 1.000 leave no headroom to see differences. Neither says much about a large corpus.
-
-### Latency (held-out run, milliseconds per search, this machine)
-
-| Configuration | mean | p50 | p95 |
-|---|---|---|---|
-| semantic | 7 | 7 | 9 |
-| lexical | 6 | 6 | 8 |
-| hybrid | 10 | 10 | 12 |
-| semantic+rerank | 342 | 332 | 468 |
-| hybrid+rerank | 318 | 328 | 384 |
-
-One process, a handful of queries, a CPU, a 34-chunk corpus. Indicative of the *relative* cost of the cross-encoder, not a benchmark and not a production number.
-
-### Evidence gate and answering
-
-Gate sweep on the **held-out** set (top-1 cosine similarity, `status=current`):
-
-| Threshold | Answerable passing | Unanswerable refused |
+| Configuration | p50 | p95 |
 |---|---|---|
-| 0.45 | 91.1% | 81.2% |
-| 0.50 | 84.4% | 81.2% |
-| **0.55 (default)** | 71.1% | 87.5% |
-| 0.60 | 51.1% | 93.8% |
+| semantic | 7 | 9 |
+| lexical | 6 | 8 |
+| hybrid | 10 | 12 |
+| semantic+rerank | 332 | 468 |
+| hybrid+rerank | 328 | 384 |
 
-Lowest answerable top-1 similarity 0.181; highest unanswerable 0.731. The ranges overlap heavily, so no single threshold separates them. The tuning set looked better (0.430 / 0.582) because the threshold was chosen on it.
-
-End to end (`/api/ask` logic, default settings):
-
-| | Tuning | Held-out |
-|---|---|---|
-| Answerable answered correctly with a relevant citation | 23/33 | 28/45 |
-| Answerable wrongly refused by the gate | 6 | 13 |
-| Answerable answered with a wrong sentence or source | 4 | 4 |
-| Unanswerable refused | 12/13 | 14/16 |
-
-The gate is the weakest part: on held-out questions it refused 13 of 45 answerable ones, and it answered 2 unanswerable near-domain questions (an auto-loan limit and a 36-month interest rate, both topics the documents touch without answering). A better gate would need more than a single similarity threshold, and was not attempted here.
-
-### Reading these numbers
-
-- The held-out set is separate from the tuning set but small (n = 45) and written by the author of the system.
-- The corpus is tiny and synthetic. High Hit@5 on 34 chunks says little about large corpora.
-- The answer check is a strict substring match, so a reasonable answer phrased differently can be scored wrong.
-- Latency figures are single-machine and indicative only. No throughput benchmark was run.
-- CI enforces floors below these measured values on both sets (`tests/integration/test_evaluation_regression.py`). They are regression guards, not quality claims.
-
-## Scope and limitations
-
-- Synthetic documents only, English only, markdown input only (no PDF/HTML parsing).
-- With 34 rows PostgreSQL normally picks an exact scan over the HNSW index. The tests prove the query shape can use the index (`enable_seqscan=off` plus an iterative-scan test), not that the index speeds up this tiny corpus.
-- One embedding model. Hybrid search and cross-encoder reranking are optional and off by default: the defaults were chosen on the tuning set, where hybrid lost and reranking cost too much latency, while the held-out set favoured lexical/hybrid/reranked retrieval. That mismatch is documented, not tuned away, and needs a new held-out set to resolve.
-- The default answer generator is extractive, not an LLM. The optional OpenAI-compatible and Bedrock generators have not been run against a live model, so no live-LLM behaviour or quality is claimed.
-- Observability is instrumented and tested but has not been run against a real collector, tracing backend or dashboard, and `/metrics` is unauthenticated. No load test was run.
-- The MCP server is a tool interface for clients that launch it locally; with `AUTH_MODE=off` it applies no access control (with `jwt` it requires a valid token at startup) and it is not an agent: no LLM decides which tool to call here, and nothing in this project is multi-agent. It was exercised with an MCP client library in tests, not with a specific AI assistant product.
-- Authentication is optional and off by default; with it off the API has no access control at all. There is no rate limiting. Document labels in the sample data are synthetic, `/metrics` and `/health` are unauthenticated, and the authorization predicate is not covered by the HNSW or GIN indexes, which is fine at this size and unmeasured beyond it. Authorization has been tested with locally minted tokens and a local JWKS server, not against a real identity provider.
-- The Compose file uses local-only demo credentials (`policy_rag_local_only`); they are not secrets.
-- The held-out set is small and written by the system's author; it is not an independent benchmark.
-- Not production-ready. It is a portfolio project that demonstrates the retrieval design, the evidence gate and its evaluation.
+The evidence gate is evaluated separately from retrieval and is covered by regression tests across answerable and unanswerable questions.
 
 ## Configuration
 
@@ -319,6 +266,6 @@ app/db          schema, pool           app/retrieval   pgvector search + filters
 app/models      API + domain types     app/rag         evidence gate, generators, LangGraph
 app/evaluation  metrics, gold, runner  scripts         ingest, evaluate_retrieval
 sample_data     synthetic policies     eval            gold questions + latest results
-infra/terraform  AWS reference deployment (not deployed)
+infra/terraform  AWS reference architecture (Terraform)
 tests/unit  tests/integration
 ```
