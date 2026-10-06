@@ -1,28 +1,52 @@
 # Policy RAG Platform
 
-**Grounded RAG with semantic and optional hybrid retrieval, built on PostgreSQL + pgvector.**
+**Grounded RAG over PostgreSQL + pgvector: semantic, lexical and hybrid retrieval, optional cross-encoder reranking, retrieval-time access control, an evidence gate that refuses unsupported questions, and cited answers.**
 
-A small retrieval-augmented generation (RAG) service over **synthetic** lending-policy documents. Embeddings live in **PostgreSQL + pgvector**, search is a real vector query with metadata filters, and an **evidence gate** makes the service refuse questions the documents cannot support instead of guessing.
-
-It runs end to end with no paid API: a local embedding model, and an extractive answer generator by default.
+A retrieval-augmented generation (RAG) service over **synthetic** lending-policy documents. Embeddings live in **PostgreSQL + pgvector**, search is a real vector (or full-text, or fused) query with metadata filters, and an **evidence gate** makes the service refuse questions the documents cannot support instead of guessing. It runs end to end with no paid API and no AWS account: a local embedding model, and an extractive answer generator by default.
 
 ```
-Query ─► Embedding ─► pgvector HNSW ─► Top-K ─► Evidence gate ─► Answer ─► Citation check
-         (MiniLM,     cosine search    chunks    similarity ≥     (extractive   every [n] must point
-          384-dim)    + metadata       + scores  threshold?       or LLM)       at a retrieved chunk
-                      filter in SQL                │ no
-                                                   └──► Refuse (no sources, reason returned)
+Query ──► caller's access scope (tenant, level, department) ANDed into every query below
+ │
+ ├─ semantic (default) ─► MiniLM embedding ─► pgvector HNSW (cosine)
+ ├─ lexical            ─► PostgreSQL full-text search (tsvector + GIN)
+ └─ hybrid (optional)  ─► semantic + lexical ─► Reciprocal Rank Fusion
+          │               (metadata filters apply inside each retriever)
+          ▼
+   candidate set ─► cross-encoder reranker (optional, off by default)
+          ▼
+    Evidence gate ── insufficient similarity ──► Refuse (no sources, reason returned)
+          │ sufficient
+          ▼
+      LangGraph flow ─► generator: extractive (default)  |  Bedrock / OpenAI-compatible (optional)
+          ▼
+   Citation validation ─► Answer with sources   (or Refuse if no valid citation)
+
+ Also: MCP tool server (stdio) · JWT + roles · OpenTelemetry · Terraform AWS reference (not deployed)
 ```
 
-Demonstrates real vector storage, semantic retrieval, grounded answer/refusal logic, and retrieval evaluation using PostgreSQL + pgvector.
+**Stack:** Python · FastAPI · PostgreSQL · pgvector (HNSW, cosine) · full-text search · hybrid retrieval · Reciprocal Rank Fusion · cross-encoder reranking · embeddings · metadata filtering · LangGraph · evidence gating · citation validation · retrieval evaluation (Hit@K, MRR, nDCG, held-out set) · MCP · JWT / RBAC · OpenTelemetry · Docker · GitHub Actions · Terraform · Pytest
 
-**Stack:** Python · FastAPI · PostgreSQL · pgvector (HNSW, cosine similarity) · embeddings · metadata filtering · LangGraph · evidence gating · citation validation · retrieval evaluation · Docker · GitHub Actions · Pytest
+## Status at a glance
+
+| Capability | Status |
+|---|---|
+| pgvector semantic search, HNSW, metadata filtering | Verified (real PostgreSQL + pgvector in tests and CI) |
+| PostgreSQL full-text search, hybrid retrieval, RRF | Verified; optional, not the default (see measured results) |
+| Cross-encoder reranking | Verified locally with a real model; optional, off by default |
+| Held-out retrieval evaluation, nDCG, CI floors | Verified (small, synthetic, written by the author) |
+| LangGraph evidence gate, citations, refusals | Verified |
+| JWT authentication, roles, document-level authorization | Verified with locally minted tokens and a local JWKS server; not run against a real identity provider |
+| MCP server | Verified with an MCP client library over stdio and in-process; not tried with a specific AI assistant |
+| OpenTelemetry, Prometheus metrics, structured logs | Verified in tests, including OTLP export to a local receiver; no real backend or dashboard |
+| AWS Bedrock generator | **Implemented, not live-validated** (SDK mocked in tests; no AWS credentials were available) |
+| Terraform AWS deployment | **Provided, not deployed** (fmt, validate and a Trivy scan only) |
+| Production readiness | **Not production-ready** (see limitations) |
 
 ## What is implemented
 
 | Area | Implementation |
 |---|---|
-| API | FastAPI: `GET /health`, `GET /api/documents`, `POST /api/search`, `POST /api/ask` |
+| API | FastAPI: `GET /health`, `GET /metrics`, `GET /api/me`, `GET /api/documents`, `POST /api/search`, `POST /api/ask` |
 | Vector store | PostgreSQL 16 + pgvector (`pgvector/pgvector:pg16`, 0.8.7 in the runs below), `vector(384)` column |
 | Index | HNSW, `vector_cosine_ops`, `m=16`, `ef_construction=64`; `hnsw.ef_search=40` per query |
 | Similarity | Cosine distance (`<=>`); similarity = 1 − distance |
@@ -40,7 +64,7 @@ Demonstrates real vector storage, semantic retrieval, grounded answer/refusal lo
 | Security | JWT validation (OIDC/JWKS, PEM key, or demo shared secret), roles, and document-level authorization enforced inside the retrieval SQL (tenant, access level, department); the HTTP API and the MCP server obey the same scope |
 | Infrastructure | Terraform reference architecture for AWS (ECS Fargate, ALB, RDS PostgreSQL 16, Secrets Manager, CloudWatch, least-privilege IAM). Validated and scanned in CI; **not deployed** (see [`infra/terraform`](infra/terraform/README.md)) |
 | Tests | 490 (273 unit, 217 integration against real PostgreSQL + pgvector) |
-| CI | ruff, mypy, unit + integration tests with a pgvector service container, pip-audit, bandit, Docker Compose smoke test |
+| CI | ruff, mypy, unit + integration tests with a pgvector service container, pip-audit, bandit, Docker Compose smoke test, terraform fmt/validate and a Trivy IaC scan. All six jobs are required checks on `main` |
 
 Only LangGraph is used from the LangChain ecosystem; there is no other LangChain code in the app.
 
