@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1290" width="1400" height="1290" role="img" aria-label="Policy RAG Platform architecture: JWT access scope, semantic, lexical and hybrid retrieval on PostgreSQL and pgvector, optional cross-encoder reranking, evidence gate, LangGraph generation, citation validation, answer or refusal">
+<defs>
+<marker id="head-4cc38a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4cc38a"/></marker>
+<marker id="head-aab3ff" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#aab3ff"/></marker>
+<marker id="head-ff7b6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ff7b6e"/></marker>
+</defs>
+<style>text{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}</style>
+<rect width="1400" height="1290" fill="#0f1424"/>
+<rect x="60" y="40" width="380" height="96" rx="12" fill="#1a2140" stroke="#8c97ff" stroke-width="2"/>
+<text x="250.0" y="71.0" font-size="19" font-weight="700" fill="#e8ecfa" text-anchor="middle">Client</text>
+<text x="250.0" y="93.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">HTTP API: /api/search, /api/ask</text>
+<text x="250.0" y="115.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">MCP tool server (stdio)</text>
+<rect x="580" y="40" width="760" height="96" rx="12" fill="#131a33" stroke="#aab3ff" stroke-width="2"/>
+<text x="960.0" y="71.0" font-size="19" font-weight="700" fill="#aab3ff" text-anchor="middle">Authentication and access scope</text>
+<text x="960.0" y="93.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">JWT validation (issuer, audience, signature, expiry)  →  roles, tenant, department</text>
+<text x="960.0" y="115.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">The scope is applied inside every query below, before anything is ranked</text>
+<line x1="440" y1="88" x2="580" y2="88" stroke="#aab3ff" stroke-width="2.5" marker-end="url(#head-aab3ff)"/>
+<text x="510.0" y="76.0" font-size="14" font-weight="600" fill="#aab3ff" text-anchor="middle">bearer token</text>
+<rect x="60" y="190" width="1280" height="270" rx="16" fill="#131a33" stroke="#4a5596" stroke-width="2"/>
+<text x="84" y="224" font-size="19" font-weight="700" fill="#aab3ff" text-anchor="start">PostgreSQL 16 + pgvector</text>
+<text x="84" y="248" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="start">metadata filters and the access scope are applied in SQL inside each retriever</text>
+<rect x="100" y="280" width="380" height="150" rx="12" fill="#1a2140" stroke="#8c97ff" stroke-width="2"/>
+<text x="290.0" y="327.0" font-size="19" font-weight="700" fill="#e8ecfa" text-anchor="middle">Semantic  (default)</text>
+<text x="290.0" y="349.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">MiniLM embedding (384 dims)</text>
+<text x="290.0" y="371.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">pgvector HNSW index</text>
+<text x="290.0" y="393.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">cosine similarity</text>
+<rect x="510.0" y="280" width="380" height="150" rx="12" fill="#1a2140" stroke="#8c97ff" stroke-width="2"/>
+<text x="700.0" y="327.0" font-size="19" font-weight="700" fill="#e8ecfa" text-anchor="middle">Lexical</text>
+<text x="700.0" y="349.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">PostgreSQL full-text search</text>
+<text x="700.0" y="371.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">tsvector + GIN index</text>
+<text x="700.0" y="393.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">ranked with ts_rank</text>
+<rect x="920" y="280" width="380" height="150" rx="12" fill="#1a2140" stroke="#8c97ff" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="1110.0" y="327.0" font-size="19" font-weight="700" fill="#e8ecfa" text-anchor="middle">Hybrid  (optional)</text>
+<text x="1110.0" y="349.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">semantic + lexical results</text>
+<text x="1110.0" y="371.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">fused with Reciprocal</text>
+<text x="1110.0" y="393.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">Rank Fusion (RRF)</text>
+<line x1="960" y1="136" x2="960" y2="190" stroke="#aab3ff" stroke-width="2.5" marker-end="url(#head-aab3ff)"/>
+<line x1="700" y1="460" x2="700" y2="520" stroke="#aab3ff" stroke-width="2.5" marker-end="url(#head-aab3ff)"/>
+<rect x="470.0" y="520" width="460" height="70" rx="12" fill="#1a2140" stroke="#8c97ff" stroke-width="2"/>
+<text x="700.0" y="549.0" font-size="19" font-weight="700" fill="#e8ecfa" text-anchor="middle">Candidate set</text>
+<text x="700.0" y="571.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">top results from the selected retrieval mode</text>
+<line x1="700" y1="590" x2="700" y2="640" stroke="#aab3ff" stroke-width="2.5" marker-end="url(#head-aab3ff)"/>
+<rect x="470.0" y="640" width="460" height="80" rx="12" fill="#1a2140" stroke="#8c97ff" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="700.0" y="674.0" font-size="19" font-weight="700" fill="#e8ecfa" text-anchor="middle">Cross-encoder reranker  (optional)</text>
+<text x="700.0" y="696.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">local ms-marco MiniLM model re-orders the candidates</text>
+<line x1="700" y1="720" x2="700" y2="780" stroke="#aab3ff" stroke-width="2.5" marker-end="url(#head-aab3ff)"/>
+<rect x="470.0" y="780" width="460" height="100" rx="12" fill="#131a33" stroke="#aab3ff" stroke-width="2"/>
+<text x="700.0" y="802.0" font-size="19" font-weight="700" fill="#aab3ff" text-anchor="middle">Evidence gate</text>
+<text x="700.0" y="824.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">best chunk similarity ≥ threshold?</text>
+<text x="700.0" y="846.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">only chunks above the threshold</text>
+<text x="700.0" y="868.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">can become context</text>
+<rect x="1010" y="790" width="330" height="80" rx="12" fill="#3a1818" stroke="#ff7b6e" stroke-width="2"/>
+<text x="1175.0" y="824.0" font-size="19" font-weight="700" fill="#ff7b6e" text-anchor="middle">Refuse</text>
+<text x="1175.0" y="846.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">no sources, reason returned</text>
+<line x1="930.0" y1="830" x2="1010" y2="830" stroke="#ff7b6e" stroke-width="2.5" marker-end="url(#head-ff7b6e)"/>
+<text x="970.0" y="818.0" font-size="14" font-weight="600" fill="#ff7b6e" text-anchor="middle">insufficient</text>
+<line x1="700" y1="880" x2="700" y2="950" stroke="#aab3ff" stroke-width="2.5" marker-end="url(#head-aab3ff)"/>
+<text x="750.0" y="907.0" font-size="14" font-weight="600" fill="#aab3ff" text-anchor="middle">sufficient</text>
+<rect x="380.0" y="950" width="640" height="120" rx="12" fill="#1a2140" stroke="#8c97ff" stroke-width="2"/>
+<text x="700.0" y="993.0" font-size="19" font-weight="700" fill="#e8ecfa" text-anchor="middle">LangGraph flow</text>
+<text x="700.0" y="1015.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">validate query → retrieve → assess evidence → generate | refuse → validate citations</text>
+<text x="700.0" y="1037.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">generator: Extractive (default)   ·   Bedrock / OpenAI-compatible (optional)</text>
+<line x1="700" y1="1070" x2="700" y2="1120" stroke="#aab3ff" stroke-width="2.5" marker-end="url(#head-aab3ff)"/>
+<rect x="470.0" y="1120" width="460" height="70" rx="12" fill="#131a33" stroke="#aab3ff" stroke-width="2"/>
+<text x="700.0" y="1149.0" font-size="19" font-weight="700" fill="#aab3ff" text-anchor="middle">Citation validation</text>
+<text x="700.0" y="1171.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">every [n] must point at a retrieved chunk</text>
+<rect x="300" y="1220" width="330" height="50" rx="12" fill="#12301f" stroke="#4cc38a" stroke-width="2"/>
+<text x="465.0" y="1250.0" font-size="19" font-weight="700" fill="#4cc38a" text-anchor="middle">Answer with cited sources</text>
+<rect x="770" y="1220" width="330" height="50" rx="12" fill="#3a1818" stroke="#ff7b6e" stroke-width="2"/>
+<text x="935.0" y="1250.0" font-size="19" font-weight="700" fill="#ff7b6e" text-anchor="middle">Refuse (no valid citation)</text>
+<line x1="620" y1="1190" x2="465" y2="1220" stroke="#4cc38a" stroke-width="2.5" marker-end="url(#head-4cc38a)"/>
+<line x1="780" y1="1190" x2="935" y2="1220" stroke="#ff7b6e" stroke-width="2.5" marker-end="url(#head-ff7b6e)"/>
+<text x="60" y="506" font-size="16" font-weight="700" fill="#a9b4d6" text-anchor="start">Across the platform</text>
+<rect x="60" y="540" width="250" height="130" rx="12" fill="#161d38" stroke="#5a679f" stroke-width="2"/>
+<text x="185.0" y="588.0" font-size="19" font-weight="700" fill="#e8ecfa" text-anchor="middle">MCP tool server</text>
+<text x="185.0" y="610.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">search, read, ask</text>
+<text x="185.0" y="632.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">typed, read-only tools</text>
+<rect x="60" y="700" width="250" height="130" rx="12" fill="#161d38" stroke="#5a679f" stroke-width="2"/>
+<text x="185.0" y="748.0" font-size="19" font-weight="700" fill="#e8ecfa" text-anchor="middle">OpenTelemetry</text>
+<text x="185.0" y="770.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">traces, metrics,</text>
+<text x="185.0" y="792.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">structured logs</text>
+<rect x="60" y="860" width="250" height="130" rx="12" fill="#161d38" stroke="#5a679f" stroke-width="2"/>
+<text x="185.0" y="908.0" font-size="19" font-weight="700" fill="#e8ecfa" text-anchor="middle">Terraform</text>
+<text x="185.0" y="930.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">AWS reference</text>
+<text x="185.0" y="952.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">architecture</text>
+<rect x="60" y="1020" width="250" height="130" rx="12" fill="#161d38" stroke="#5a679f" stroke-width="2"/>
+<text x="185.0" y="1068.0" font-size="19" font-weight="700" fill="#e8ecfa" text-anchor="middle">GitHub Actions CI</text>
+<text x="185.0" y="1090.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">tests, security,</text>
+<text x="185.0" y="1112.0" font-size="15" font-weight="400" fill="#a9b4d6" text-anchor="middle">Terraform checks</text>
+<line x1="330" y1="540" x2="330" y2="1150" stroke="#5a679f" stroke-width="2" stroke-dasharray="3 7"/>
+</svg>
