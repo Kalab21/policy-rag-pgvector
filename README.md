@@ -134,8 +134,6 @@ curl -s localhost:8000/api/me -H "Authorization: Bearer $TOKEN"
 
 [`infra/terraform`](infra/terraform/README.md) describes how this service could run on AWS: Fargate behind an internal-by-default load balancer, RDS PostgreSQL 16 with pgvector in private subnets (its password generated and held by Secrets Manager, never in the configuration), mandatory JWT authentication against your OIDC provider, and narrowly scoped IAM roles. `terraform fmt`, `terraform validate` and a Trivy scan (no HIGH or CRITICAL findings) run in CI.
 
-**Terraform AWS reference architecture:** ECS/Fargate, ALB, RDS PostgreSQL 16, Secrets Manager, CloudWatch and least-privilege IAM. `terraform fmt`, `terraform validate` and a Trivy scan run in CI.
-
 ### Observability
 
 Enough telemetry to investigate a bad answer without recording what users asked.
