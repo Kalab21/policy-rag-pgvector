@@ -18,16 +18,16 @@ A retrieval-augmented generation (RAG) service that answers questions about **sy
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-dark.svg">
-    <img src="docs/architecture.svg" alt="Policy RAG Platform end-to-end architecture. A REST API client reaches an Application Load Balancer over HTTPS with an ACM certificate, which forwards to the FastAPI service on ECS Fargate; an MCP consumer runs the MCP server locally over stdio with its own token. Both present a bearer token that is validated against an external identity provider's JWKS keys and turned into an access scope of role, tenant, department and access level. The scope is applied inside every retrieval query, before retrieval: semantic (pgvector HNSW), lexical (PostgreSQL full-text) or hybrid (Reciprocal Rank Fusion) search against RDS PostgreSQL 16 with pgvector in private subnets, then optional cross-encoder reranking and an evidence gate. A LangGraph answer generator (extractive by default, AWS Bedrock optional) and citation validation return an answer with sources or a refusal. A runtime and operations rail shows ECR, Secrets Manager, CloudWatch Logs, optional Bedrock, least-privilege IAM, and OpenTelemetry with Prometheus; held-out evaluation and CI run across the platform." width="1000">
+    <img src="docs/architecture.svg" alt="Policy RAG Platform end-to-end architecture. A REST API client reaches an Application Load Balancer, whose public ingress requires HTTPS with an ACM certificate, and which forwards to the FastAPI service on ECS Fargate; an MCP consumer runs the MCP server locally over stdio with its own token. Both present a bearer token that is validated against an external identity provider's JWKS keys and turned into an access scope of role, tenant, department and access level. The scope is applied inside every retrieval query, before retrieval: semantic (pgvector HNSW), lexical (PostgreSQL full-text) or hybrid (Reciprocal Rank Fusion) search against RDS PostgreSQL 16 with pgvector in private subnets, then optional cross-encoder reranking and an evidence gate. A LangGraph answer generator (extractive by default, AWS Bedrock optional) and citation validation return an answer with sources or a refusal. A runtime and operations rail shows ECR, Secrets Manager, CloudWatch Logs, optional Bedrock, least-privilege IAM, and OpenTelemetry with Prometheus; held-out evaluation and CI run across the platform." width="1000">
   </picture>
 </p>
 
 A request passes through five stages: **authenticate** (token to access scope), **retrieve** (semantic, lexical or hybrid, inside that scope), optionally **rerank**, **gate** on evidence strength, then **generate and validate citations**. The REST API and the MCP server share the same services and the same scope.
 
-The diagram combines the request path with the AWS infrastructure model in
-[`infra/terraform/`](infra/terraform/): an Application Load Balancer in front of the FastAPI
-service on ECS Fargate, and RDS PostgreSQL 16 with pgvector in private subnets. Network
-rules, IAM policies and cost notes stay in [infra/terraform/README.md](infra/terraform/README.md).
+The diagram combines the request path with the AWS infrastructure model. Terraform models
+the AWS runtime with ALB, ECS Fargate, RDS PostgreSQL + pgvector, ECR, Secrets Manager,
+CloudWatch and least-privilege IAM; network rules, IAM policies and cost notes are in
+[infra/terraform/README.md](infra/terraform/README.md).
 
 ## Key Design Decisions
 
@@ -70,7 +70,7 @@ A read-only Model Context Protocol server (stdio) with three bounded tools that 
 - **Read-only, bounded MCP tools:** three typed, length-limited tools with no SQL, filesystem, shell or network access and a per-call deadline; with JWT on, the server will not start without a valid token, and every call is limited by its scope.
 - **Grounding controls:** the evidence gate and citation validation stop unsupported answers; LLM generators receive only chunks that passed the gate.
 - **Data-minimized telemetry:** traces, metrics and logs record the question's length, not its text (a short preview only behind an explicit opt-in), and never document text, answers, request bodies, headers or credentials.
-- **Secrets:** no secrets files are tracked (checked in CI); in the AWS reference deployment, database credentials come from Secrets Manager and tokens are verified against the identity provider's public keys.
+- **Secrets:** no secrets files are tracked (checked in CI); in the AWS infrastructure model, database credentials come from Secrets Manager and tokens are verified against the identity provider's public keys.
 
 Trade-off: enforcing authorization before retrieval ties the access model to the schema (every chunk carries tenant, department and access level), in exchange for a guarantee that restricted text never reaches ranking, gating, generation or telemetry. This project validates tokens but does not issue them or run an identity provider. Details: [docs/SECURITY.md](docs/SECURITY.md).
 
@@ -100,7 +100,7 @@ Tuning-set results, latency and the evaluation protocol are in [eval/README.md](
 
 ## Technology
 
-Python · FastAPI · PostgreSQL · pgvector · HNSW · Hybrid Search · RRF · Cross-Encoder Reranking · LangGraph · MCP · JWT/RBAC · OpenTelemetry · Docker · Terraform · AWS (ECS Fargate, ALB, RDS, ECR, Secrets Manager, CloudWatch, optional Bedrock) · GitHub Actions
+Python · FastAPI · PostgreSQL · pgvector · HNSW · Hybrid Search · RRF · Cross-Encoder Reranking · LangGraph · MCP · JWT/RBAC · OpenTelemetry · Docker · Terraform · AWS infrastructure (ECS Fargate, ALB, RDS, ECR, Secrets Manager, CloudWatch, optional Bedrock) · GitHub Actions
 
 ## Quick start
 
@@ -123,11 +123,11 @@ A question the documents do not cover, such as *"How do I bake sourdough bread?"
 | [docs/SECURITY.md](docs/SECURITY.md) | JWT/OIDC/JWKS validation, algorithm allowlist, roles, tenant/department/access-level rules, retrieval-time enforcement, MCP security, data minimization |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | API, local environment and tests, configuration reference, generator providers (including Bedrock), MCP server, observability, layout |
 | [eval/README.md](eval/README.md) | Evaluation protocol, metrics, tuning and held-out results, latency |
-| [infra/terraform/README.md](infra/terraform/README.md) | AWS reference deployment, not currently deployed (ECS Fargate, ALB, RDS PostgreSQL 16, Secrets Manager, IAM) |
+| [infra/terraform/README.md](infra/terraform/README.md) | AWS infrastructure model in Terraform: ECS Fargate, ALB, RDS PostgreSQL 16, Secrets Manager, IAM, network rules |
 
 ## Scope and limitations
 
 - The policy corpus is synthetic and small (7 documents, 34 chunks).
-- The AWS configuration is a Terraform reference architecture, validated and scanned in CI; it is not a live deployment.
+- Local execution uses Docker Compose; the AWS infrastructure is modeled in Terraform and validated statically in CI (fmt, validate, Trivy), not run as a live environment.
 - Optional external generators (AWS Bedrock, OpenAI-compatible) require provider access; the Bedrock adapter is tested with a mocked SDK client.
 - Tokens come from an external identity provider; `AUTH_MODE=off` is a local demo mode.

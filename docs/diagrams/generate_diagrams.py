@@ -168,21 +168,22 @@ class Svg:
 
 
 LABEL = (
-    "Policy RAG Platform end-to-end architecture. A REST API client reaches an Application Load Balancer over "
-    "HTTPS with an ACM certificate, which forwards to the FastAPI service on ECS Fargate; an MCP consumer runs the "
-    "MCP server locally over stdio with its own token. Both present a bearer token that is validated against an "
-    "external identity provider's JWKS keys and turned into an access scope of role, tenant, department and access "
-    "level. The scope is applied inside every retrieval query, before retrieval: semantic (pgvector HNSW), lexical "
-    "(PostgreSQL full-text) or hybrid (Reciprocal Rank Fusion) search against RDS PostgreSQL 16 with pgvector in "
-    "private subnets, then optional cross-encoder reranking and an evidence gate. A LangGraph answer generator "
-    "(extractive by default, AWS Bedrock optional) and citation validation return an answer with sources or a "
-    "refusal. A runtime and operations rail shows ECR, Secrets Manager, CloudWatch Logs, optional Bedrock, "
-    "least-privilege IAM, and OpenTelemetry with Prometheus; held-out evaluation and CI run across the platform."
+    "Policy RAG Platform end-to-end architecture. A REST API client reaches an Application Load Balancer, whose "
+    "public ingress requires HTTPS with an ACM certificate, and which forwards to the FastAPI service on ECS "
+    "Fargate; an MCP consumer runs the MCP server locally over stdio with its own token. Both present a bearer "
+    "token that is validated against an external identity provider's JWKS keys and turned into an access scope "
+    "of role, tenant, department and access level. The scope is applied inside every retrieval query, before "
+    "retrieval: semantic (pgvector HNSW), lexical (PostgreSQL full-text) or hybrid (Reciprocal Rank Fusion) "
+    "search against RDS PostgreSQL 16 with pgvector in private subnets, then optional cross-encoder reranking "
+    "and an evidence gate. A LangGraph answer generator (extractive by default, AWS Bedrock optional) and "
+    "citation validation return an answer with sources or a refusal. A runtime and operations rail shows ECR, "
+    "Secrets Manager, CloudWatch Logs, optional Bedrock, least-privilege IAM, and OpenTelemetry with "
+    "Prometheus; held-out evaluation and CI run across the platform."
 )
 
 
 def architecture(t):
-    W, H = 1440, 1620
+    W, H = 1440, 1466
     s = Svg(W, H, t, LABEL)
     cx = 520
 
@@ -193,7 +194,7 @@ def architecture(t):
 
     # Entry and runtime
     s.zone(70, 140, 700, 158, "Entry & runtime · AWS model")
-    s.aws_box(100, 182, 300, 92, "Application Load Balancer", ["HTTPS · ACM certificate"])
+    s.aws_box(100, 182, 300, 92, "Application Load Balancer", ["public ingress: HTTPS + ACM"])
     s.box(470, 182, 270, 92, "FastAPI", ["on ECS Fargate"], title_color=t["accent"], fill=t["box2"])
     s.arrow([(400, 228), (470, 228)])
 
@@ -217,20 +218,20 @@ def architecture(t):
     s.arrow([(1040, 394), (920, 394)], color=t["muted"], label="JWKS", lx=980, ly=384)
 
     s.arrow(
-        [(cx, 448), (cx, 548)],
+        [(cx, 448), (cx, 528)],
         color=t["amber"],
         label="authorization applied before retrieval",
         lx=cx + 14,
-        ly=520,
+        ly=508,
         anchor="start",
     )
 
     # Authorized scope
-    s.group(60, 478, 940, 1000, "Authorized scope: permitted chunks only", t["amber"])
+    s.group(60, 466, 940, 894, "Authorized scope: permitted chunks only", t["amber"])
 
     # Retrieval
-    s.rect(100, 548, 860, 196, t["box2"], t["stroke"], rx=14)
-    s.text(122, 576, "Retrieval", 16, 700, t["accent"], "start")
+    s.rect(100, 528, 860, 176, t["box2"], t["stroke"], rx=14)
+    s.text(122, 556, "Retrieval", 16, 700, t["accent"], "start")
     for i, (title, lines) in enumerate(
         [
             ("Semantic", ["pgvector HNSW", "cosine similarity"]),
@@ -238,15 +239,15 @@ def architecture(t):
             ("Hybrid", ["semantic + lexical", "Reciprocal Rank Fusion"]),
         ]
     ):
-        s.box(122 + i * 279, 594, 259, 128, title, lines)
+        s.box(122 + i * 279, 572, 259, 112, title, lines)
 
     # Data
-    s.group(1030, 548, 380, 196, "Data · private subnets", t["data"], fill=t["data_fill"])
+    s.group(1030, 528, 380, 176, "Data · private subnets", t["data"], fill=t["data_fill"])
     s.box(
         1050,
-        594,
+        568,
         340,
-        128,
+        116,
         "RDS PostgreSQL 16 + pgvector",
         ["documents · chunks · embeddings", "authorization metadata"],
         title_color=t["data"],
@@ -254,17 +255,17 @@ def architecture(t):
         stroke=t["data"],
         tsize=16.5,
     )
-    s.arrow([(960, 658), (1050, 658)], color=t["data"], label="SQL", lx=990, ly=646)
+    s.arrow([(960, 626), (1050, 626)], color=t["data"], label="SQL", lx=1015, ly=614)
 
     # Rerank and gate
-    s.arrow([(cx, 744), (cx, 788)])
-    s.box(300, 788, 440, 84, "Cross-encoder reranking", ["optional · bounded candidate set"])
-    s.arrow([(cx, 872), (cx, 916)])
+    s.arrow([(cx, 704), (cx, 740)])
+    s.box(300, 740, 440, 76, "Cross-encoder reranking", ["optional · bounded candidate set"])
+    s.arrow([(cx, 816), (cx, 852)])
     s.box(
         300,
-        916,
+        852,
         440,
-        88,
+        80,
         "Evidence gate",
         ["best similarity ≥ threshold?"],
         title_color=t["accent"],
@@ -273,28 +274,28 @@ def architecture(t):
 
     # Grounded generation
     s.arrow(
-        [(cx, 1004), (cx, 1100)], label="sufficient evidence", lx=cx + 14, ly=1036, anchor="start"
+        [(cx, 932), (cx, 1012)], label="sufficient evidence", lx=cx + 14, ly=962, anchor="start"
     )
     s.group(
-        100, 1062, 860, 250, "Grounded generation: gated chunks only", t["ai"], fill=t["ai_fill"]
+        100, 978, 860, 232, "Grounded generation: gated chunks only", t["ai"], fill=t["ai_fill"]
     )
     s.box(
         200,
-        1100,
+        1012,
         640,
-        88,
+        80,
         "LangGraph answer generator",
         ["extractive (default) · Bedrock or OpenAI-compatible (optional)"],
         title_color=t["ai"],
         fill=t["bg"],
         stroke=t["ai"],
     )
-    s.arrow([(cx, 1188), (cx, 1216)], color=t["ai"])
+    s.arrow([(cx, 1092), (cx, 1116)], color=t["ai"])
     s.box(
         300,
-        1216,
+        1116,
         440,
-        76,
+        72,
         "Citation validation",
         ["every [n] must match a supplied chunk"],
         title_color=t["ai"],
@@ -305,9 +306,9 @@ def architecture(t):
     # Outcomes
     s.box(
         130,
-        1360,
+        1250,
         380,
-        86,
+        80,
         "Refusal",
         ["no sources · reason returned"],
         title_color=t["red"],
@@ -316,9 +317,9 @@ def architecture(t):
     )
     s.box(
         580,
-        1360,
+        1250,
         360,
-        86,
+        80,
         "Answer + sources",
         ["cited chunks · document references"],
         title_color=t["green"],
@@ -326,31 +327,31 @@ def architecture(t):
         stroke=t["green"],
     )
     s.arrow(
-        [(420, 1292), (420, 1360)],
+        [(420, 1188), (420, 1250)],
         color=t["red"],
         label="no valid citation",
         lx=408,
-        ly=1336,
+        ly=1230,
         anchor="end",
     )
     s.arrow(
-        [(640, 1292), (640, 1360)],
+        [(640, 1188), (640, 1250)],
         color=t["green"],
         label="valid citations",
         lx=652,
-        ly=1336,
+        ly=1230,
         anchor="start",
     )
     s.arrow(
-        [(300, 960), (80, 960), (80, 1403), (130, 1403)],
+        [(300, 892), (80, 892), (80, 1290), (130, 1290)],
         color=t["red"],
         label="insufficient evidence",
         lx=190,
-        ly=950,
+        ly=882,
     )
 
     # AWS runtime and operations rail
-    s.zone(1030, 772, 380, 706, "AWS runtime & operations")
+    s.zone(1030, 728, 380, 632, "AWS runtime & operations")
     rail = [
         ("Amazon ECR", ["application image"], False),
         ("Secrets Manager", ["database credentials"], False),
@@ -360,19 +361,19 @@ def architecture(t):
         ("OpenTelemetry · Prometheus", ["traces · metrics · JSON logs"], False),
     ]
     for i, (title, lines, dash) in enumerate(rail):
-        s.aws_box(1050, 812 + i * 108, 340, 84, title, lines, dash=dash)
-    s.arrow([(840, 1160), (1050, 1160)], color=t["ai"], dash=True)
-    s.text(995, 1150, "optional", 12.5, 600, t["ai"])
+        s.aws_box(1050, 768 + i * 96, 340, 76, title, lines, dash=dash)
+    s.arrow([(840, 1075), (1050, 1075)], color=t["ai"], dash=True)
+    s.text(900, 1065, "optional", 12.5, 600, t["ai"])
 
     # Across the platform
-    s.group(60, 1500, 1350, 96, "Across the platform", t["group_stroke"])
+    s.group(60, 1378, 1350, 76, "Across the platform", t["group_stroke"])
     for i, (title, line) in enumerate(
         [
             ("Held-out evaluation", "Hit@K · MRR · nDCG floors in CI"),
             ("GitHub Actions CI", "tests · types · Terraform · security scans"),
         ]
     ):
-        s.box(330 + i * 540, 1514, 500, 68, title, [line], tsize=16, lsize=13.5)
+        s.box(330 + i * 540, 1388, 500, 56, title, [line], tsize=16, lsize=13.5)
     return s.render()
 
 
