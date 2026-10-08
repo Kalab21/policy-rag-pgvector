@@ -4,7 +4,7 @@
 
 ## What it describes
 
-Diagram: [docs/aws-reference-deployment.svg](../../docs/aws-reference-deployment.svg) (dark variant: [docs/aws-reference-deployment-dark.svg](../../docs/aws-reference-deployment-dark.svg)).
+The README's [end-to-end architecture](../../README.md#end-to-end-architecture) shows this deployment at a high level alongside the request path.
 
 ```
                     Internet / corporate network

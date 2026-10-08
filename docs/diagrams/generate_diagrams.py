@@ -1,12 +1,11 @@
 # ruff: noqa: E501  (long SVG strings and diagram coordinates read better on one line)
-"""Generate the architecture diagrams in docs/ (light and dark variants).
+"""Generate the end-to-end architecture diagram in docs/ (light and dark variants).
 
 Standard library only. Run from the repository root:
 
     python docs/diagrams/generate_diagrams.py
 
-Writes docs/architecture.svg, docs/architecture-dark.svg,
-docs/aws-reference-deployment.svg and docs/aws-reference-deployment-dark.svg.
+Writes docs/architecture.svg and docs/architecture-dark.svg, used by the README.
 Arrowheads are drawn as explicit triangles because some SVG viewers drop <marker>.
 """
 
@@ -37,6 +36,9 @@ THEMES = {
         "data": "#0b6f8a",
         "ai": "#7a3fb8",
         "ai_fill": "#f7f2fd",
+        "muted": "#7a849e",
+        "aws_fill": "#f6f7f9",
+        "aws_stroke": "#b4bac7",
     },
     "dark": {
         "bg": "#0d1117",
@@ -58,6 +60,9 @@ THEMES = {
         "data": "#4fb3cf",
         "ai": "#c297f0",
         "ai_fill": "#1e1530",
+        "muted": "#7d8796",
+        "aws_fill": "#141920",
+        "aws_stroke": "#3b4350",
     },
 }
 
@@ -81,19 +86,56 @@ class Svg:
         )
 
     def box(
-        self, x, y, w, h, title, lines=(), title_color=None, fill=None, stroke=None, dash=False
+        self,
+        x,
+        y,
+        w,
+        h,
+        title,
+        lines=(),
+        title_color=None,
+        fill=None,
+        stroke=None,
+        dash=False,
+        tsize=18,
+        lsize=14.5,
+        sw=2,
     ):
-        self.rect(x, y, w, h, fill or self.t["box"], stroke or self.t["stroke"], dash)
+        self.rect(x, y, w, h, fill or self.t["box"], stroke or self.t["stroke"], dash, sw=sw)
         n = 1 + len(lines)
         top = y + h / 2 - (n - 1) * 11 + 6
-        self.text(x + w / 2, top, title, 18, 700, title_color or self.t["title"])
+        self.text(x + w / 2, top, title, tsize, 700, title_color or self.t["title"])
         for i, ln in enumerate(lines):
-            self.text(x + w / 2, top + 24 + i * 21, ln, 14.5)
+            self.text(x + w / 2, top + 24 + i * 21, ln, lsize)
+
+    def aws_box(self, x, y, w, h, title, lines=(), dash=False):
+        """Infrastructure context, drawn quieter than the request path."""
+        self.box(
+            x,
+            y,
+            w,
+            h,
+            title,
+            lines,
+            fill=self.t["aws_fill"],
+            stroke=self.t["aws_stroke"],
+            dash=dash,
+            tsize=15.5,
+            lsize=13.5,
+            sw=1.5,
+        )
 
     def group(self, x, y, w, h, label, color, fill=None):
         parts, self.parts = self.parts, self.back
         self.rect(x, y, w, h, fill or self.t["group"], color, dash=True, rx=18)
         self.text(x + 22, y + 28, label, 15, 700, color, "start")
+        self.parts = parts
+
+    def zone(self, x, y, w, h, label, color=None):
+        c = color or self.t["muted"]
+        parts, self.parts = self.parts, self.back
+        self.rect(x, y, w, h, "none", c, dash=True, rx=16, sw=1.6)
+        self.text(x + 16, y + 24, label.upper(), 12.5, 700, c, "start")
         self.parts = parts
 
     def arrow(self, pts, color=None, label=None, lx=None, ly=None, dash=False, anchor="middle"):
@@ -125,135 +167,134 @@ class Svg:
         )
 
 
+LABEL = (
+    "Policy RAG Platform end-to-end architecture. A REST API client reaches an Application Load Balancer over "
+    "HTTPS with an ACM certificate, which forwards to the FastAPI service on ECS Fargate; an MCP consumer runs the "
+    "MCP server locally over stdio with its own token. Both present a bearer token that is validated against an "
+    "external identity provider's JWKS keys and turned into an access scope of role, tenant, department and access "
+    "level. The scope is applied inside every retrieval query, before retrieval: semantic (pgvector HNSW), lexical "
+    "(PostgreSQL full-text) or hybrid (Reciprocal Rank Fusion) search against RDS PostgreSQL 16 with pgvector in "
+    "private subnets, then optional cross-encoder reranking and an evidence gate. A LangGraph answer generator "
+    "(extractive by default, AWS Bedrock optional) and citation validation return an answer with sources or a "
+    "refusal. A runtime and operations rail shows ECR, Secrets Manager, CloudWatch Logs, optional Bedrock, "
+    "least-privilege IAM, and OpenTelemetry with Prometheus; held-out evaluation and CI run across the platform."
+)
+
+
 def architecture(t):
-    W, H = 1400, 1500
-    s = Svg(
-        W,
-        H,
-        t,
-        (
-            "Policy RAG Platform logical architecture. A REST API client or MCP consumer sends a bearer token; "
-            "JWT validation produces an access scope (roles, tenant, department, access level) that is applied inside "
-            "every retrieval query against PostgreSQL 16 with pgvector. Semantic, lexical or hybrid retrieval, optional "
-            "cross-encoder reranking and an evidence gate run only on authorized chunks; LangGraph generation and "
-            "citation validation return an answer with sources or a refusal. OpenTelemetry, Prometheus, held-out "
-            "evaluation and CI run across the platform."
-        ),
-    )
-    cx = 525  # centre of the request path
+    W, H = 1440, 1620
+    s = Svg(W, H, t, LABEL)
+    cx = 520
 
-    # 1. Client
-    s.box(
-        225,
-        30,
-        600,
-        100,
-        "Client  /  MCP consumer",
-        ["REST API: search · ask · documents", "MCP tool server (stdio): read-only, bounded tools"],
-        fill=t["box2"],
-    )
-    s.arrow([(cx, 130), (cx, 184)], label="bearer token (JWT)", lx=cx + 14, ly=163, anchor="start")
+    # Clients
+    s.box(100, 24, 300, 84, "REST API client", ["search · ask · documents"], fill=t["box2"])
+    s.box(720, 24, 260, 84, "MCP consumer", ["stdio · read-only tools"], fill=t["box2"])
+    s.arrow([(330, 108), (330, 182)], label="HTTPS", lx=342, ly=129, anchor="start")
 
-    # 2. Authentication and access scope
+    # Entry and runtime
+    s.zone(70, 140, 700, 158, "Entry & runtime · AWS model")
+    s.aws_box(100, 182, 300, 92, "Application Load Balancer", ["HTTPS · ACM certificate"])
+    s.box(470, 182, 270, 92, "FastAPI", ["on ECS Fargate"], title_color=t["accent"], fill=t["box2"])
+    s.arrow([(400, 228), (470, 228)])
+
+    # Identity and authorization
+    s.arrow([(605, 274), (605, 340)], label="bearer token", lx=617, ly=314, anchor="start")
+    s.arrow([(850, 108), (850, 340)], label="own token", lx=862, ly=226, anchor="start")
     s.box(
-        175,
-        184,
-        700,
-        112,
-        "Authentication + access scope",
-        [
-            "JWT validation: OIDC/JWKS or PEM key · algorithm allowlist",
-            "→ roles · tenant · department · highest access level",
-        ],
+        160,
+        340,
+        760,
+        108,
+        "JWT validation → access scope",
+        ["OIDC/JWKS or PEM key · algorithm allowlist", "role · tenant · department · access level"],
         title_color=t["amber"],
         fill=t["amber_fill"],
         stroke=t["amber"],
     )
+    s.aws_box(
+        1040, 348, 360, 92, "External identity provider", ["OIDC · JWKS signing keys"], dash=True
+    )
+    s.arrow([(1040, 394), (920, 394)], color=t["muted"], label="JWKS", lx=980, ly=384)
+
     s.arrow(
-        [(cx, 296), (cx, 400)],
+        [(cx, 448), (cx, 548)],
         color=t["amber"],
-        label="access scope, applied inside every query",
+        label="authorization applied before retrieval",
         lx=cx + 14,
-        ly=356,
+        ly=520,
         anchor="start",
     )
 
-    # Trust boundary: everything after authentication sees only authorized chunks
-    s.group(60, 330, 930, 850, "Authorized scope: permitted chunks only", t["amber"])
+    # Authorized scope
+    s.group(60, 478, 940, 1000, "Authorized scope: permitted chunks only", t["amber"])
 
-    # 3. Retrieval layer
-    s.rect(100, 400, 850, 196, t["box2"], t["stroke"], rx=14)
-    s.text(122, 428, "Retrieval layer", 16, 700, t["accent"], "start")
+    # Retrieval
+    s.rect(100, 548, 860, 196, t["box2"], t["stroke"], rx=14)
+    s.text(122, 576, "Retrieval", 16, 700, t["accent"], "start")
     for i, (title, lines) in enumerate(
         [
-            ("Semantic (vector)", ["pgvector HNSW", "cosine similarity"]),
+            ("Semantic", ["pgvector HNSW", "cosine similarity"]),
             ("Lexical", ["PostgreSQL full-text", "tsvector + GIN"]),
             ("Hybrid", ["semantic + lexical", "Reciprocal Rank Fusion"]),
         ]
     ):
-        s.box(122 + i * 276, 446, 254, 128, title, lines)
+        s.box(122 + i * 279, 594, 259, 128, title, lines)
 
-    # Data layer, beside the retrieval layer
-    s.group(1030, 400, 310, 196, "Data", t["data"], fill=t["data_fill"])
+    # Data
+    s.group(1030, 548, 380, 196, "Data · private subnets", t["data"], fill=t["data_fill"])
     s.box(
-        1052,
-        446,
-        266,
+        1050,
+        594,
+        340,
         128,
-        "PostgreSQL 16",
-        ["+ pgvector", "chunks · embeddings", "tenant · dept · level"],
+        "RDS PostgreSQL 16 + pgvector",
+        ["documents · chunks · embeddings", "authorization metadata"],
         title_color=t["data"],
         fill=t["bg"],
         stroke=t["data"],
+        tsize=16.5,
     )
-    s.arrow([(950, 510), (1052, 510)], color=t["data"], label="SQL", lx=990, ly=500)
+    s.arrow([(960, 658), (1050, 658)], color=t["data"], label="SQL", lx=990, ly=646)
 
-    # 4. Reranker
-    s.arrow([(cx, 596), (cx, 640)])
+    # Rerank and gate
+    s.arrow([(cx, 744), (cx, 788)])
+    s.box(300, 788, 440, 84, "Cross-encoder reranking", ["optional · bounded candidate set"])
+    s.arrow([(cx, 872), (cx, 916)])
     s.box(
-        305,
-        640,
+        300,
+        916,
         440,
-        86,
-        "Cross-encoder reranking (optional)",
-        ["re-orders a bounded candidate set"],
-    )
-
-    # 5. Evidence gate
-    s.arrow([(cx, 726), (cx, 770)])
-    s.box(
-        305,
-        770,
-        440,
-        92,
+        88,
         "Evidence gate",
         ["best similarity ≥ threshold?"],
         title_color=t["accent"],
         fill=t["box2"],
     )
 
-    # 6/7. AI generation boundary
-    s.arrow([(cx, 862), (cx, 940)], label="sufficient evidence", lx=cx + 14, ly=890, anchor="start")
+    # Grounded generation
+    s.arrow(
+        [(cx, 1004), (cx, 1100)], label="sufficient evidence", lx=cx + 14, ly=1036, anchor="start"
+    )
     s.group(
-        100, 908, 850, 248, "AI generation boundary: gated chunks only", t["ai"], fill=t["ai_fill"]
+        100, 1062, 860, 250, "Grounded generation: gated chunks only", t["ai"], fill=t["ai_fill"]
     )
     s.box(
-        220,
-        950,
-        610,
-        92,
-        "LangGraph generation",
-        ["extractive (default) · Bedrock / OpenAI-compatible (optional)"],
+        200,
+        1100,
+        640,
+        88,
+        "LangGraph answer generator",
+        ["extractive (default) · Bedrock or OpenAI-compatible (optional)"],
         title_color=t["ai"],
         fill=t["bg"],
         stroke=t["ai"],
     )
-    s.arrow([(cx, 1042), (cx, 1066)], color=t["ai"])
+    s.arrow([(cx, 1188), (cx, 1216)], color=t["ai"])
     s.box(
-        305,
-        1066,
+        300,
+        1216,
         440,
-        72,
+        76,
         "Citation validation",
         ["every [n] must match a supplied chunk"],
         title_color=t["ai"],
@@ -262,193 +303,76 @@ def architecture(t):
     )
 
     # Outcomes
-    s.arrow(
-        [(cx, 1138), (cx, 1226)],
-        color=t["green"],
-        label="valid citations",
-        lx=cx + 14,
-        ly=1206,
-        anchor="start",
-    )
     s.box(
-        305,
-        1226,
-        440,
-        84,
-        "Answer with sources",
-        ["cited chunks and document references"],
-        title_color=t["green"],
-        fill=t["green_fill"],
-        stroke=t["green"],
-    )
-    s.box(
-        1040,
-        1226,
-        300,
-        84,
+        130,
+        1360,
+        380,
+        86,
         "Refusal",
         ["no sources · reason returned"],
         title_color=t["red"],
         fill=t["red_fill"],
         stroke=t["red"],
     )
-    s.arrow(
-        [(745, 816), (1250, 816), (1250, 1226)],
-        color=t["red"],
-        label="insufficient evidence",
-        lx=1000,
-        ly=806,
+    s.box(
+        580,
+        1360,
+        360,
+        86,
+        "Answer + sources",
+        ["cited chunks · document references"],
+        title_color=t["green"],
+        fill=t["green_fill"],
+        stroke=t["green"],
     )
     s.arrow(
-        [(745, 1102), (1120, 1102), (1120, 1226)],
+        [(420, 1292), (420, 1360)],
         color=t["red"],
         label="no valid citation",
-        lx=1052,
-        ly=1092,
+        lx=408,
+        ly=1336,
+        anchor="end",
+    )
+    s.arrow(
+        [(640, 1292), (640, 1360)],
+        color=t["green"],
+        label="valid citations",
+        lx=652,
+        ly=1336,
+        anchor="start",
+    )
+    s.arrow(
+        [(300, 960), (80, 960), (80, 1403), (130, 1403)],
+        color=t["red"],
+        label="insufficient evidence",
+        lx=190,
+        ly=950,
     )
 
-    # Cross-cutting operations strip
-    s.group(60, 1350, 1280, 130, "Across the platform", t["group_stroke"])
+    # AWS runtime and operations rail
+    s.zone(1030, 772, 380, 706, "AWS runtime & operations")
+    rail = [
+        ("Amazon ECR", ["application image"], False),
+        ("Secrets Manager", ["database credentials"], False),
+        ("CloudWatch Logs", ["application logs"], False),
+        ("Amazon Bedrock", ["optional generation · listed models"], True),
+        ("IAM", ["least-privilege task roles"], False),
+        ("OpenTelemetry · Prometheus", ["traces · metrics · JSON logs"], False),
+    ]
+    for i, (title, lines, dash) in enumerate(rail):
+        s.aws_box(1050, 812 + i * 108, 340, 84, title, lines, dash=dash)
+    s.arrow([(840, 1160), (1050, 1160)], color=t["ai"], dash=True)
+    s.text(995, 1150, "optional", 12.5, 600, t["ai"])
+
+    # Across the platform
+    s.group(60, 1500, 1350, 96, "Across the platform", t["group_stroke"])
     for i, (title, line) in enumerate(
         [
-            ("OpenTelemetry", "traces per pipeline stage"),
-            ("Prometheus + JSON logs", "no question or document text"),
-            ("Evaluation", "held-out + tuning sets"),
-            ("GitHub Actions CI", "tests · types · IaC · security"),
+            ("Held-out evaluation", "Hit@K · MRR · nDCG floors in CI"),
+            ("GitHub Actions CI", "tests · types · Terraform · security scans"),
         ]
     ):
-        s.box(84 + i * 312, 1390, 296, 72, title, [line])
-    return s.render()
-
-
-def aws(t):
-    W, H = 1400, 960
-    s = Svg(
-        W,
-        H,
-        t,
-        (
-            "AWS reference deployment defined in Terraform and not currently deployed. Clients on allowed networks "
-            "reach an Application Load Balancer over HTTPS with an ACM certificate (required for a public load "
-            "balancer). The load balancer forwards to an ECS Fargate service, which connects to RDS PostgreSQL 16 "
-            "with pgvector in private subnets. The task pulls its image from ECR, reads database credentials from "
-            "Secrets Manager, writes logs to CloudWatch, runs under least-privilege IAM roles, verifies tokens against "
-            "the identity provider's JWKS endpoint and may call Bedrock only if model ARNs are granted."
-        ),
-    )
-    s.box(
-        400,
-        30,
-        600,
-        92,
-        "Clients on allowed networks",
-        ["alb_ingress_cidrs (no default)"],
-        fill=t["box2"],
-    )
-    s.arrow(
-        [(700, 122), (700, 214)],
-        label="HTTPS (ACM certificate, TLS 1.3 policy)",
-        lx=714,
-        ly=152,
-        anchor="start",
-    )
-
-    s.group(
-        60, 170, 860, 760, "VPC (Terraform reference, 2-3 availability zones)", t["group_stroke"]
-    )
-    s.box(
-        420,
-        214,
-        460,
-        104,
-        "Application Load Balancer",
-        ["internal by default · public needs a certificate", "HTTP redirects to HTTPS"],
-        title_color=t["accent"],
-        fill=t["box2"],
-    )
-    s.arrow(
-        [(650, 318), (650, 420)],
-        label="container port, from the ALB only",
-        lx=664,
-        ly=376,
-        anchor="start",
-    )
-
-    s.group(
-        100, 384, 780, 220, "Application subnets (private with the NAT gateway option)", t["accent"]
-    )
-    s.box(
-        300,
-        430,
-        480,
-        150,
-        "ECS Fargate service",
-        [
-            "FastAPI task · AUTH_MODE=jwt",
-            "read-only root filesystem",
-            "egress: HTTPS + PostgreSQL only",
-        ],
-    )
-    s.arrow(
-        [(540, 580), (540, 690)],
-        color=t["data"],
-        label="PostgreSQL, from the app only",
-        lx=554,
-        ly=642,
-        anchor="start",
-    )
-
-    s.group(100, 654, 780, 250, "Private data subnets", t["data"], fill=t["data_fill"])
-    s.box(
-        300,
-        700,
-        480,
-        170,
-        "RDS PostgreSQL 16 + pgvector",
-        [
-            "encrypted storage · not publicly accessible",
-            "automated backups",
-            "master password managed by RDS",
-            "in Secrets Manager",
-        ],
-        title_color=t["data"],
-        fill=t["bg"],
-        stroke=t["data"],
-    )
-
-    # AWS services and external endpoints reached over HTTPS
-    s.text(1150, 200, "Reached over HTTPS (443)", 15, 700, t["accent"])
-    side = [
-        ("Amazon ECR", ["image: immutable tags, scan on push"], None, None, None),
-        ("Secrets Manager", ["DB_USER / DB_PASSWORD"], None, None, None),
-        ("CloudWatch Logs", ["one log group"], None, None, None),
-        ("Identity provider JWKS", ["external; token signature keys"], None, None, None),
-        (
-            "Amazon Bedrock (optional)",
-            ["InvokeModel on listed ARNs only"],
-            t["ai"],
-            t["ai_fill"],
-            t["ai"],
-        ),
-        (
-            "IAM roles",
-            ["execution + task roles, least privilege", "(attached to the task)"],
-            t["amber"],
-            t["amber_fill"],
-            t["amber"],
-        ),
-    ]
-    for i, (title, lines, tc, fill, stroke) in enumerate(side):
-        y = 224 + i * 116
-        s.box(980, y, 340, 92, title, lines, title_color=tc, fill=fill, stroke=stroke, dash=i == 4)
-    # one trunk from the task to the side services
-    s.parts.append(
-        f'<path d="M780,505 L940,505 M940,270 L940,{224 + 4 * 116 + 46}" fill="none" '
-        f'stroke="{t["accent"]}" stroke-width="2.5"/>'
-    )
-    for i in range(5):
-        y = 224 + i * 116 + 46
-        s.arrow([(940, y), (980, y)], color=t["ai"] if i == 4 else None, dash=i == 4)
+        s.box(330 + i * 540, 1514, 500, 68, title, [line], tsize=16, lsize=13.5)
     return s.render()
 
 
@@ -456,7 +380,6 @@ def main():
     for theme, palette in THEMES.items():
         suffix = "" if theme == "light" else "-dark"
         (DOCS / f"architecture{suffix}.svg").write_text(architecture(palette), encoding="utf8")
-        (DOCS / f"aws-reference-deployment{suffix}.svg").write_text(aws(palette), encoding="utf8")
     print("diagrams written to", DOCS)
 
 

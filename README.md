@@ -13,25 +13,28 @@ A retrieval-augmented generation (RAG) service that answers questions about **sy
 - **Evaluation:** separate tuning and held-out question sets (Hit@K, Recall@K, MRR, nDCG) with regression floors in CI
 - **Engineering:** 490 automated tests, 217 of them against real PostgreSQL + pgvector
 
-## Architecture
+## End-to-End Architecture
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-dark.svg">
-    <img src="docs/architecture.svg" alt="Policy RAG Platform logical architecture. A REST API client or MCP consumer sends a bearer token. JWT validation (OIDC/JWKS or PEM key, algorithm allowlist) produces an access scope of roles, tenant, department and highest access level. Inside the authorized scope, the retrieval layer runs semantic (pgvector HNSW), lexical (PostgreSQL full-text) or hybrid (Reciprocal Rank Fusion) search against PostgreSQL 16 with pgvector, with the scope applied inside every SQL query; optional cross-encoder reranking follows. An evidence gate refuses when similarity is insufficient. Inside the AI generation boundary, LangGraph generation (extractive by default, Bedrock or OpenAI-compatible optional) and citation validation return an answer with sources or a refusal. OpenTelemetry, Prometheus metrics with JSON logs, held-out evaluation and GitHub Actions CI run across the platform." width="1000">
+    <img src="docs/architecture.svg" alt="Policy RAG Platform end-to-end architecture. A REST API client reaches an Application Load Balancer over HTTPS with an ACM certificate, which forwards to the FastAPI service on ECS Fargate; an MCP consumer runs the MCP server locally over stdio with its own token. Both present a bearer token that is validated against an external identity provider's JWKS keys and turned into an access scope of role, tenant, department and access level. The scope is applied inside every retrieval query, before retrieval: semantic (pgvector HNSW), lexical (PostgreSQL full-text) or hybrid (Reciprocal Rank Fusion) search against RDS PostgreSQL 16 with pgvector in private subnets, then optional cross-encoder reranking and an evidence gate. A LangGraph answer generator (extractive by default, AWS Bedrock optional) and citation validation return an answer with sources or a refusal. A runtime and operations rail shows ECR, Secrets Manager, CloudWatch Logs, optional Bedrock, least-privilege IAM, and OpenTelemetry with Prometheus; held-out evaluation and CI run across the platform." width="1000">
   </picture>
 </p>
 
 A request passes through five stages: **authenticate** (token to access scope), **retrieve** (semantic, lexical or hybrid, inside that scope), optionally **rerank**, **gate** on evidence strength, then **generate and validate citations**. The REST API and the MCP server share the same services and the same scope.
 
-Key design decisions:
+The diagram combines the request path with the AWS infrastructure model in
+[`infra/terraform/`](infra/terraform/): an Application Load Balancer in front of the FastAPI
+service on ECS Fargate, and RDS PostgreSQL 16 with pgvector in private subnets. Network
+rules, IAM policies and cost notes stay in [infra/terraform/README.md](infra/terraform/README.md).
+
+## Key Design Decisions
 
 - **Authorization before retrieval, not after.** The access scope is a SQL predicate ANDed into every query, so unauthorized chunks are never fetched. Filtering results afterwards would still let them influence ranking, the evidence gate, a generator or a trace.
 - **Refuse rather than guess.** Nothing is generated unless the best chunk clears a similarity threshold, and an answer without a valid citation is refused.
 - **Evaluate before claiming quality.** Retrieval changes are measured on a held-out question set that is never used for tuning, with regression floors enforced in CI.
 - **No paid dependency on the default path.** Local ONNX embeddings and an extractive generator; LLM generators are optional adapters behind the same gate and citation check.
-
-**Stack:** Python · FastAPI · PostgreSQL · pgvector · HNSW · Hybrid Search · RRF · Cross-Encoder Reranking · LangGraph · MCP · JWT/RBAC · OpenTelemetry · Docker · Terraform · GitHub Actions
 
 ## Retrieval modes
 
@@ -95,18 +98,9 @@ Tuning-set results, latency and the evaluation protocol are in [eval/README.md](
 
 490 automated tests: 273 unit tests and 217 integration tests against real PostgreSQL + pgvector, covering retrieval, authorization, the evidence gate, citations and telemetry data minimization. CI runs ruff, mypy, both test suites with retrieval regression floors, Terraform fmt/validate with a Trivy scan, pip-audit, bandit and a Docker Compose smoke test. Commands: [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
-## AWS Reference Deployment
+## Technology
 
-Terraform-defined reference architecture; not currently deployed.
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/aws-reference-deployment-dark.svg">
-    <img src="docs/aws-reference-deployment.svg" alt="AWS reference deployment defined in Terraform and not currently deployed. Clients on allowed networks reach an Application Load Balancer over HTTPS with an ACM certificate and a TLS 1.3 policy; the load balancer is internal by default and a public one requires a certificate. It forwards to an ECS Fargate service in the application subnets (private when the NAT gateway option is enabled), which alone may connect to RDS PostgreSQL 16 with pgvector in private data subnets. The task pulls its image from ECR, reads database credentials from Secrets Manager, writes to CloudWatch Logs, verifies tokens against the identity provider's JWKS endpoint, and may invoke Bedrock only when model ARNs are granted. IAM execution and task roles are least privilege." width="1000">
-  </picture>
-</p>
-
-ECS Fargate behind an Application Load Balancer, RDS PostgreSQL 16 + pgvector in private subnets, ECR, Secrets Manager, CloudWatch Logs and least-privilege IAM roles; the task role gets Bedrock access only when model ARNs are listed. `terraform fmt`, `validate` and a Trivy scan run in CI. Modules, network rules and cost notes: [infra/terraform/README.md](infra/terraform/README.md).
+Python · FastAPI · PostgreSQL · pgvector · HNSW · Hybrid Search · RRF · Cross-Encoder Reranking · LangGraph · MCP · JWT/RBAC · OpenTelemetry · Docker · Terraform · AWS (ECS Fargate, ALB, RDS, ECR, Secrets Manager, CloudWatch, optional Bedrock) · GitHub Actions
 
 ## Quick start
 
