@@ -94,7 +94,7 @@ python -m app.mcp_server                                  # stdio, from the repo
 docker compose exec -T api python -m app.mcp_server       # or inside the running stack
 ```
 
-Point an MCP client at that command. It exposes exactly three read-only tools that reuse the same retrieval and RAG services as the HTTP API (the logic is not duplicated):
+Point an MCP client at that command. It exposes exactly three read-only tools that reuse the same retrieval and RAG services as the REST API (the logic is not duplicated):
 
 | Tool | Arguments | Returns |
 |---|---|---|

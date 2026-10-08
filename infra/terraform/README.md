@@ -1,8 +1,10 @@
 # AWS reference deployment (Terraform)
 
-> **Terraform AWS reference architecture.** `terraform fmt`, `terraform validate` and a Trivy configuration scan run in CI. It needs an AWS account to apply, and the resources it creates incur AWS charges while they run.
+> **Terraform-defined reference architecture; not currently deployed.** `terraform fmt`, `terraform validate` and a Trivy configuration scan run in CI. It needs an AWS account to apply, and the resources it creates incur AWS charges while they run.
 
 ## What it describes
+
+Diagram: [docs/aws-reference-deployment.svg](../../docs/aws-reference-deployment.svg) (dark variant: [docs/aws-reference-deployment-dark.svg](../../docs/aws-reference-deployment-dark.svg)).
 
 ```
                     Internet / corporate network
