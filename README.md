@@ -133,11 +133,7 @@ A question the documents do not cover, such as *"How do I bake sourdough bread?"
 
 ## Scope and limitations
 
-A personal project, designed, built and maintained by [@Kalab21](https://github.com/Kalab21).
-
-
 - The policy corpus is synthetic and small (7 documents, 34 chunks).
-- The Terraform AWS configuration is a reference architecture: `terraform fmt`, `validate` and a Trivy scan run in CI, but it has not been applied to an AWS account.
-- The AWS Bedrock adapter is covered by tests with the AWS SDK client mocked; live use depends on AWS credentials and model access and is not claimed.
-- Only LangGraph is used from the LangChain ecosystem; there is no other LangChain code in the app.
-- This project does not issue tokens or run an identity provider; `AUTH_MODE=off` is a local demo mode.
+- The AWS configuration is a Terraform reference architecture, validated and scanned in CI; it is not a live deployment.
+- Optional external generators (AWS Bedrock, OpenAI-compatible) require provider access; the Bedrock adapter is tested with a mocked SDK client.
+- Tokens come from an external identity provider; `AUTH_MODE=off` is a local demo mode.
