@@ -2,7 +2,7 @@
 
 `AUTH_MODE=jwt` makes the API and the MCP server validate a bearer token and limit everything to what it allows. The default, `AUTH_MODE=off`, is the local demo mode: no login, and `/api/me` reports it.
 
-In short: JWT validation (OIDC/JWKS, PEM key, or demo shared secret), roles, and document-level authorization enforced inside the retrieval SQL (tenant, access level, department); the HTTP API and the MCP server obey the same scope.
+In short: JWT validation (OIDC/JWKS, PEM key, or demo shared secret), roles, and document-level authorization enforced inside the retrieval SQL (tenant, access level, department); the REST API and the MCP server obey the same scope.
 
 ## Token validation (JWT, OIDC/JWKS)
 
@@ -41,7 +41,7 @@ Caller metadata filters are a separate, additional condition: they can narrow re
 
 `python -m app.mcp_server` with `AUTH_MODE=jwt` refuses to start without a valid `MCP_ACCESS_TOKEN` in its environment, and then every tool call is limited by that token's scope. It runs over stdio, so the client that launches the process supplies its own credential.
 
-The tools take typed, length-limited arguments (a document name must match `[a-z0-9-]`, so paths and SQL are rejected before any code runs), have no SQL, filesystem, shell or network access, and are annotated read-only. Failures come back as MCP tool errors with a safe message; unexpected exceptions are masked; each call has a deadline (`MCP_TOOL_TIMEOUT_S`). The server can be started with fixed metadata filters that a caller can narrow but never change, and the same scope applies as for the HTTP API. Operating instructions are in [OPERATIONS.md](OPERATIONS.md#mcp-server).
+The tools take typed, length-limited arguments (a document name must match `[a-z0-9-]`, so paths and SQL are rejected before any code runs), have no SQL, filesystem, shell or network access, and are annotated read-only. Failures come back as MCP tool errors with a safe message; unexpected exceptions are masked; each call has a deadline (`MCP_TOOL_TIMEOUT_S`). The server can be started with fixed metadata filters that a caller can narrow but never change, and the same scope applies as for the REST API. Operating instructions are in [OPERATIONS.md](OPERATIONS.md#mcp-server).
 
 ## Data minimization
 
