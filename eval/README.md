@@ -26,4 +26,46 @@ Each file has `answerable` questions (with the document, version and section tha
 
 Relevance is binary per chunk: a retrieved chunk is relevant if its (document, version, section) is listed for the question. `Hit@K`: a relevant chunk is in the top K. `Recall@K`: the share of the relevant chunks in the top K. `MRR`: mean of 1 / rank of the first relevant chunk. `nDCG@K`: discounted cumulative gain with binary gains, normalised by the best possible ordering.
 
+The harness reports Hit@K, Recall@K, nDCG@K, MRR, per-configuration latency, a gate sweep and end-to-end behaviour, over the tuning (33 answerable + 13 unanswerable) and held-out (45 answerable + 16 unanswerable) sets; CI floors apply to both.
+
 Run both sets: `python -m scripts.evaluate_retrieval`.
+
+## Latest results
+
+Measured over the synthetic policy corpus (7 documents, 34 chunks, sentence-transformers/all-MiniLM-L6-v2, pgvector 0.8.7); CI enforces regression floors for both sets. The raw numbers are in [`results.json`](results.json).
+
+### Held-out set (45 answerable questions, `status=current`)
+
+| Configuration | Hit@1 | Hit@3 | Hit@5 | Recall@5 | nDCG@5 | MRR |
+|---|---|---|---|---|---|---|
+| semantic (default) | 91.1% | 95.6% | 97.8% | 96.7% | 0.945 | 0.939 |
+| lexical | 100.0% | 100.0% | 100.0% | 100.0% | 1.000 | 1.000 |
+| hybrid | 97.8% | 100.0% | 100.0% | 100.0% | 0.992 | 0.989 |
+| semantic+rerank | 100.0% | 100.0% | 100.0% | 100.0% | 1.000 | 1.000 |
+| hybrid+rerank | 100.0% | 100.0% | 100.0% | 100.0% | 1.000 | 1.000 |
+
+### Tuning set (33 answerable questions, `status=current`)
+
+| Configuration | Hit@1 | Hit@3 | Hit@5 | Recall@5 | nDCG@5 | MRR |
+|---|---|---|---|---|---|---|
+| semantic (default) | 90.9% | 93.9% | 100.0% | 100.0% | 0.954 | 0.939 |
+| lexical | 84.8% | 97.0% | 100.0% | 100.0% | 0.930 | 0.907 |
+| hybrid | 84.8% | 97.0% | 100.0% | 100.0% | 0.934 | 0.912 |
+| semantic+rerank | 97.0% | 97.0% | 100.0% | 100.0% | 0.983 | 0.977 |
+| hybrid+rerank | 97.0% | 97.0% | 100.0% | 100.0% | 0.983 | 0.977 |
+
+Semantic retrieval is the default; lexical, hybrid and reranked configurations are selectable per request or through configuration. Reranking runs a local cross-encoder over a candidate set.
+
+### Latency
+
+Per-search latency from the harness (held-out run, milliseconds, one development machine):
+
+| Configuration | p50 | p95 |
+|---|---|---|
+| semantic | 7 | 9 |
+| lexical | 6 | 8 |
+| hybrid | 10 | 12 |
+| semantic+rerank | 332 | 468 |
+| hybrid+rerank | 328 | 384 |
+
+The evidence gate is evaluated separately from retrieval and is covered by regression tests across answerable and unanswerable questions.
