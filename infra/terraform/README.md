@@ -1,10 +1,10 @@
-# AWS reference deployment (Terraform)
+# AWS Infrastructure Model (Terraform)
 
-> **Terraform-defined reference architecture; not currently deployed.** `terraform fmt`, `terraform validate` and a Trivy configuration scan run in CI. It needs an AWS account to apply, and the resources it creates incur AWS charges while they run.
+> **Terraform-defined AWS infrastructure model; not currently deployed.** `terraform fmt`, `terraform validate` and a Trivy configuration scan run in CI. It needs an AWS account to apply, and the resources it creates incur AWS charges while they run.
 
 ## What it describes
 
-The README's [end-to-end architecture](../../README.md#end-to-end-architecture) shows this deployment at a high level alongside the request path.
+The README's [end-to-end architecture](../../README.md#end-to-end-architecture) shows this infrastructure model at a high level alongside the request path.
 
 ```
                     Internet / corporate network

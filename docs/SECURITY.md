@@ -16,7 +16,7 @@ The algorithm allowlist comes from the configured key source, not from the token
 
 ## Roles and document labels
 
-Every document (and each of its chunks) is labelled with a `tenant_id`, an `access_level` (`public` < `internal` < `restricted` < `confidential`) and a `department`, set in the document's front matter (unlabelled documents are `internal` in the `default` tenant).
+Every document (and each of its chunks) is labelled with a `tenant_id`, an `access_level` (`public` < `internal` < `restricted` < `confidential`) and a `department`, set in the document's front matter (labels omitted from front matter default to `internal` in the `default` tenant at ingestion; see the two stages below).
 
 A token's roles set the highest level its holder may read:
 
@@ -29,7 +29,9 @@ A token's roles set the highest level its holder may read:
 
 ## Tenant, department and access-level rules
 
-Public and internal documents are open to the whole tenant; restricted and confidential ones also require the holder's department to match (admins belong to every department). Other tenants' documents are never readable, and a chunk with missing labels is treated as unreadable.
+Public and internal documents are open to the whole tenant; restricted and confidential ones also require the holder's department to match (admins belong to every department). Other tenants' documents are never readable.
+
+Labels are handled in two stages. At ingestion, a document whose front matter omits a label gets the documented default (`access_level` internal, `tenant_id` default, `department` general); values that are present but invalid reject the document. At retrieval, the access predicate fails closed: a stored chunk missing an authorization attribute is treated as unreadable.
 
 ## Retrieval-time enforcement
 
@@ -41,7 +43,7 @@ Caller metadata filters are a separate, additional condition: they can narrow re
 
 `python -m app.mcp_server` with `AUTH_MODE=jwt` refuses to start without a valid `MCP_ACCESS_TOKEN` in its environment, and then every tool call is limited by that token's scope. It runs over stdio, so the client that launches the process supplies its own credential.
 
-The tools take typed, length-limited arguments (a document name must match `[a-z0-9-]`, so paths and SQL are rejected before any code runs), have no SQL, filesystem, shell or network access, and are annotated read-only. Failures come back as MCP tool errors with a safe message; unexpected exceptions are masked; each call has a deadline (`MCP_TOOL_TIMEOUT_S`). The server can be started with fixed metadata filters that a caller can narrow but never change, and the same scope applies as for the REST API. Operating instructions are in [OPERATIONS.md](OPERATIONS.md#mcp-server).
+The tools take typed, length-limited arguments (a document name must match `[a-z0-9-]`, so paths and SQL are rejected before any code runs), and are annotated read-only. The MCP interface exposes no arbitrary shell, filesystem, raw-SQL or general-purpose network tool; its three bounded read-only tools reuse the platform's authorized retrieval and RAG services, which reach PostgreSQL and, if an external generator is configured, that provider. Failures come back as MCP tool errors with a safe message; unexpected exceptions are masked; each call has a deadline (`MCP_TOOL_TIMEOUT_S`). The server can be started with fixed metadata filters that a caller can narrow but never change, and the same scope applies as for the REST API. Operating instructions are in [OPERATIONS.md](OPERATIONS.md#mcp-server).
 
 ## Data minimization
 
@@ -62,4 +64,4 @@ curl -s localhost:8000/api/me -H "Authorization: Bearer $TOKEN"
 
 ## Cloud deployment
 
-The [AWS reference architecture](../infra/terraform/README.md) makes JWT authentication mandatory (no demo mode), verifies tokens against the identity provider's public keys, and keeps the database password in Secrets Manager.
+The [Terraform-defined AWS infrastructure model](../infra/terraform/README.md) (not currently deployed) makes JWT authentication mandatory (no demo mode), verifies tokens against the identity provider's public keys, and keeps the database password in Secrets Manager.

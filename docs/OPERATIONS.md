@@ -48,7 +48,7 @@ Without `TEST_DATABASE_URL`, integration tests are skipped. They drop and recrea
 | MCP server | Implemented and tested (in-process and stdio clients) |
 | OpenTelemetry, Prometheus metrics, structured logs | Implemented and tested, including OTLP export |
 | AWS Bedrock adapter | Implemented through the official AWS SDK and covered by adapter tests; live use depends on account and model access |
-| Terraform AWS reference architecture | ECS/Fargate, ALB, RDS PostgreSQL, Secrets Manager and IAM; fmt, validate and Trivy verified in CI |
+| Terraform-defined AWS infrastructure model (not currently deployed) | ECS/Fargate, ALB, RDS PostgreSQL, Secrets Manager and IAM; fmt, validate and Trivy verified in CI |
 
 ## Configuration
 
@@ -67,7 +67,7 @@ Copy [`.env.example`](../.env.example) to `.env` to override anything; every val
 | Optional LLM | `LLM_PROVIDER` (`extractive` default, `openai_compatible` or `bedrock`), `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` |
 | Bedrock | `BEDROCK_MODEL_ID`, `BEDROCK_REGION`, `BEDROCK_MAX_TOKENS`, `BEDROCK_TEMPERATURE`, `BEDROCK_TIMEOUT_S`, `BEDROCK_MAX_RETRIES` (AWS credentials are never configured here) |
 
-Settings that exist in the application but are deliberately not forwarded by Compose: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` and `DB_SSLMODE` (the database in parts, used by the AWS deployment, where a managed secret supplies the password; setting `DB_HOST` replaces `DATABASE_URL`), `DATABASE_URL` (derived from the `POSTGRES_*` values), `EMBEDDING_PROVIDER` (only `fastembed` is implemented), `SAMPLE_DATA_DIR`, `AUTO_INIT_SCHEMA`, `DB_POOL_MIN_SIZE`, `DB_POOL_MAX_SIZE` and `LLM_TIMEOUT_S`. They work when running the app directly, not through Compose.
+Settings that exist in the application but are deliberately not forwarded by Compose: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` and `DB_SSLMODE` (the database in parts, used by the AWS infrastructure model, where a managed secret supplies the password; setting `DB_HOST` replaces `DATABASE_URL`), `DATABASE_URL` (derived from the `POSTGRES_*` values), `EMBEDDING_PROVIDER` (only `fastembed` is implemented), `SAMPLE_DATA_DIR`, `AUTO_INIT_SCHEMA`, `DB_POOL_MIN_SIZE`, `DB_POOL_MAX_SIZE` and `LLM_TIMEOUT_S`. They work when running the app directly, not through Compose.
 
 ### Configuration notes
 
@@ -125,6 +125,6 @@ app/evaluation  metrics, gold, runner  app/security    JWT validation, access sc
 app/mcp_server  MCP tools (stdio)      app/observability  traces, metrics, logs
 scripts         ingest, evaluate_retrieval, make_demo_token, bedrock_smoke
 sample_data     synthetic policies     eval            gold questions + latest results
-infra/terraform  AWS reference architecture (Terraform)
+infra/terraform  AWS infrastructure model (Terraform)
 tests/unit  tests/integration
 ```
