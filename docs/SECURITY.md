@@ -16,7 +16,7 @@ The algorithm allowlist comes from the configured key source, not from the token
 
 ## Roles and document labels
 
-Every document (and each of its chunks) is labelled with a `tenant_id`, an `access_level` (`public` < `internal` < `restricted` < `confidential`) and a `department`, set in the document's front matter (unlabelled documents are `internal` in the `default` tenant).
+Every document (and each of its chunks) is labelled with a `tenant_id`, an `access_level` (`public` < `internal` < `restricted` < `confidential`) and a `department`, set in the document's front matter (labels omitted from front matter default to `internal` in the `default` tenant at ingestion; see the two stages below).
 
 A token's roles set the highest level its holder may read:
 
